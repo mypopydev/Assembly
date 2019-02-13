@@ -1,0 +1,288 @@
+\documentclass{beamer}
+
+\usepackage{geometry}
+\usepackage{graphicx}
+%\usepackage{wrapfig}
+\usepackage{amsmath}
+
+%\useoutertheme{infolines}
+\usetheme{Boadilla}
+\usecolortheme{seahorse}
+\setbeamertemplate{navigation symbols}{}
+\title{Using the C Stream I/O Functions}
+\newcommand{\shorttitle}{64 Bit Intel Assembly Language}
+\newcommand{\shortauthor}{\copyright 2011 Ray Seyfarth}
+\author{Ray Seyfarth}
+\begin{document}
+
+
+\usefoottemplate{\vbox{
+\tinycolouredline{structure!55}%
+ {\color{white}{\textbf{\shorttitle}\hfill\textbf{\shortauthor}}}%
+}}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}
+    \frametitle{Why use the C stream I/O functions?}
+    \begin{itemize}
+        \item The basic {\tt open}, {\tt lseek}, {\tt read}, {\tt write} and
+              {\tt close} system calls work
+        \item The C stream I/O library buffers data in your process
+        \item If you use {\tt read} to read 1 billion bytes, there will be
+              1 billion system calls
+        \item If you read 1 billion bytes using {\tt getchar} there will be
+              perhaps 1 system call per 8192 bytes
+        \item Using {\tt getchar} can be over 20 times as fast
+        \item The operating system uses buffers too - you probably can't really
+              1 byte from a disk in one operation
+        \item For small sized records, using the stream I/O functions will be faster
+        \item You could implement your own specialized buffering system and do better
+              than the C library, but you'll pay for the efficiency with time
+    \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Outline}
+\tableofcontents
+\end{frame}
+
+\section{Opening a file}
+
+\begin{frame}[fragile]
+    \frametitle{Opening a file using {\tt fopen}}
+\begin{verbatim}
+    FILE *fopen ( char *pathname, char *mode );
+\end{verbatim}
+    \begin{itemize}
+        \item {\tt pathname} is the null-terminated name of the file to open
+        \item {\tt mode} is a string defining how you wish to use the file
+    \end{itemize}
+\begin{center}
+    \begin{tabular}{|l|l|}
+        \hline
+        r  & read only mode \\
+        \hline 
+        r+ & read and write \\
+        \hline
+        w  & write only, truncates or creates \\
+        \hline
+        w+ & read and write, truncates or creates \\
+        \hline
+        a  & write only, appends or creates \\
+        \hline
+        a+ & read and write, appends or creates \\
+        \hline
+    \end{tabular}
+\end{center}
+    \begin{itemize}
+        \item {\tt fopen} returns an ``opaque'' {\tt FILE} pointer (or NULL on error)
+        \item A {\tt FILE} is probably a struct with a file descriptor and
+              a pointer to a buffer
+    \end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Assembly code to open a file using {\tt fopen}}
+\begin{verbatim}
+        segment .data
+name    db      "customers.dat",0
+mode    db      "w+",0
+fp      dq      0
+        segment .text
+        global  fopen
+        lea     rdi, [name]
+        lea     rsi, [mode]
+        call    fopen
+        mov     [fp], rax
+\end{verbatim}
+\end{frame}
+
+\section{Using fscanf and fprintf}
+
+\begin{frame}[fragile]
+    \frametitle{Using {\tt fscanf} and {\tt fprintf}}
+\begin{verbatim}
+    int fscanf ( FILE *fp, char *format, ... );
+    int fprintf ( FILE *fp, char *format, ... );
+\end{verbatim}
+    \begin{itemize}
+        \item {\tt scanf} is a function calling {\tt fscanf} with {\tt stdin}
+              as the {\tt FILE} pointer (more or less)
+        \item The behavior of {\tt fscanf} is like {\tt scanf}, except that it
+              reads from any file
+        \item {\tt printf} is a function calling {\tt fprintf} with {\tt stdout}
+              as the {\tt FILE} pointer
+        \item The behavior of {\tt fprintf} is like {\tt printf}, except that it
+              writes to any file
+    \end{itemize}
+\small
+\end{frame}
+
+\section{Using fgetc and fputc}
+
+\begin{frame}[fragile]
+    \frametitle{Using {\tt fgetc} and {\tt fputc}}
+\begin{verbatim}
+    int fgetc ( FILE *fp );
+    int fputc ( int c, FILE *fp );
+    int ungetc ( int c, FILE *fp );
+\end{verbatim}
+    \begin{itemize}
+        \item {\tt fgetc} reads 1 character
+        \item It returns {\tt EOF} which is -1 on end of file or error
+        \item {\tt fputc} writes the character {\tt c} to a file
+        \item It returns {\tt c} on success or EOF
+        \item You can use {\tt ungetc} to ``push back'' a character
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Copying data using {\tt fgetc} and {\tt fputc}}
+\begin{verbatim}
+more    mov     rdi, [ifp]  ; input file pointer
+        call    fgetc
+        test    eax, -1
+        je      done
+        mov     edi, eax
+        mov     rsi, [ofp]  ; output file pointer
+        call    fputc
+        jmp     more
+done:
+\end{verbatim}
+\end{frame}
+
+\section{Using fgets and fputs}
+
+\begin{frame}[fragile]
+    \frametitle{Using {\tt fgets} and {\tt fputs}}
+\begin{verbatim}
+    char *fgets ( char *s, int size, FILE *fp );
+    int fputs ( char *s, FILE *fp );
+\end{verbatim}
+    \begin{itemize}
+        \item The parameter {\tt s} is the array to read or write
+        \item {\tt size} is the number of characters in {\tt s}
+        \item {\tt fgets} will read until it has read a new-line
+              character, or it has filled {\tt s}, or it hits end-of-file
+        \item The new-line character will be placed in {\tt s}
+        \item No matter what {\tt fgets} places a null byte (0) at the end of {\tt s}
+        \item {\tt fgets} returns {\tt s} on success or NULL on end-of-file or error
+        \item {\tt fputs} writes {\tt s} to the file
+        \item It returns {\tt EOF} (-1) on error
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Selectively copying lines of text}
+    \begin{itemize}
+        \item The code below copies all lines of text which
+              do not start with '{\tt ;}'
+    \end{itemize}
+\begin{verbatim}
+more    lea     rdi, [s]
+        mov     esi, 200
+        mov     rdx, [ifp]
+        call    fgets
+        test    rax, 0
+        je      done
+        mov     al, [s]
+        test    al, ';'
+        je      more
+        lea     rdi, [s]
+        mov     rsi, [ofp]
+        call    fputs
+        jmp     more
+done:
+\end{verbatim}
+\end{frame}
+
+\section{Using fread and fwrite}
+
+\begin{frame}[fragile]
+    \frametitle{Using {\tt fread} and {\tt fwrite}}
+\begin{verbatim}
+    int fread ( void *p, int size, int nelts, FILE *fp );
+    int fwrite ( void *p, int size, int nelts, FILE *fp );
+\end{verbatim}
+    \begin{itemize}
+        \item The parameter {\tt p} is the address of a variable or array
+        \item {\tt size} is the size of each element to read or write
+        \item {\tt nelts} is the number of elements to read or write
+        \item Both return the number or elements read or written
+        \item The return value could be less than {\tt nelts} or 0
+        \item The code below writes 100 {\tt Customer} objects
+    \end{itemize}
+\begin{verbatim}
+    mov     rdi, [customers]  ; allocated array
+    mov     esi, Customer_size
+    mov     edx, 100
+    mov     rcx, [fp]
+    call    fwrite
+\end{verbatim}
+\end{frame}
+
+\section{Using fseek and ftell}
+
+\begin{frame}[fragile]
+    \frametitle{Using {\tt fseek} and {\tt ftell}}
+\begin{verbatim}
+    int fseek ( FILE *fp, long offset, int whence );
+    long ftell ( FILE *fp );
+\end{verbatim}
+    \begin{itemize}
+        \item {\tt fseek} sets the stream's position like {\tt lseek}
+        \item {\tt ftell} returns the current position
+        \item If {\tt whence} is 0, {\tt offset} is the byte position
+        \item If {\tt whence} is 1, {\tt offset} is relative to the current position
+        \item If {\tt whence} is 2, {\tt offset} is relative to the end of file
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Function to write a customer record}
+\small
+\begin{verbatim}
+write_customer:
+.fp     equ     0
+.c      equ     8
+        push    rbp
+        mov     rbp, rsp
+        sub     rsp, 16
+        mov     [rsp+.fp], rdi     ; file pointer
+        mov     [rsp+.c], rsi      ; save Customer pointer
+        mul     rdx, Customer_size ; record number * size
+        mov     rsi, rdx           ; 2nd parameter to ftell
+        mov     rdx, 0             ; whence meaning position
+        call    ftell
+        mov     rdi, [rsp+.c]      ; pointer to start writing from
+        mov     rsi, Customer_size ; size of each element
+        mov     rdx, 1             ; write 1 element
+        mov     rcx, [rsp+.fp]     ; file pointer
+        call    fwrite
+        leave
+        ret
+\end{verbatim}
+\end{frame}
+
+\section{Closing a file}
+
+\begin{frame}[fragile]
+    \frametitle{Closing a file}
+\begin{verbatim}
+    int fclose(FILE *fp);
+\end{verbatim}
+    \begin{itemize}
+        \item The {\tt FILE} object has a buffer and may
+              contain data which has not been written
+        \item Failure to close with {\tt fclose} could result in lost data
+        \item The system will close the underlying file, but will not
+              call {\tt fclose} automatically when your process ends
+    \end{itemize}
+\end{frame}
+
+\end{document}

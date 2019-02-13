@@ -1,0 +1,8 @@
+\beamer@endinputifotherversion {3.10pt}
+\beamer@sectionintoc {1}{Memory mapping basics}{3}{0}{1}
+\beamer@sectionintoc {2}{Page map level 4}{6}{0}{2}
+\beamer@sectionintoc {3}{Page directory pointer table}{7}{0}{3}
+\beamer@sectionintoc {4}{Page directory table}{8}{0}{4}
+\beamer@sectionintoc {5}{Page table}{9}{0}{5}
+\beamer@sectionintoc {6}{Large pages}{10}{0}{6}
+\beamer@sectionintoc {7}{CPU support for fast lookups}{11}{0}{7}

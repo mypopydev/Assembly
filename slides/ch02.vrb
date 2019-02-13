@@ -1,0 +1,11 @@
+\frametitle {Floating point storage (3)}
+    \begin{verbatim}
+    8 00000014 CDCC8C3F               d dd 1.1
+    \end{verbatim}
+    \begin{itemize}
+        \item 1.1 is a repeating binary number
+        \item The number in ``proper'' order is {\tt 3F8CCCCD}
+        \item The exponent field is 127, so the exponent is 1
+        \item The number is $1.00011001100110011001101_2$
+        \item It looks like $1.1 = 1.000\overline{1100}$
+    \end{itemize}

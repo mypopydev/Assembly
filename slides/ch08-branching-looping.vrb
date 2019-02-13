@@ -1,0 +1,20 @@
+\frametitle {Compare instruction}
+    \begin{itemize}
+        \item The compare string instructions compare the data
+              pointed at by {\tt rdi} and {\tt rsi}
+        \item The code below implements the C {\tt memcmp} function
+    \end{itemize}
+\begin{verbatim}
+        segment .text
+        global  memcmp
+memcmp: mov     rcx, rdx
+        repe    cmpsb      ; compare until end or difference
+        cmp     rcx, 0
+        jz      equal      ; reached the end
+        movzx   eax, byte [rdi-1]
+        movsx   ecx, byte [rsi-1]
+        sub     eax, ecx
+        ret
+equal:  xor     eax, eax
+        ret
+\end{verbatim}

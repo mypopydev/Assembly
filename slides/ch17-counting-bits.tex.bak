@@ -1,0 +1,165 @@
+\documentclass{beamer}
+
+\usepackage{geometry}
+\usepackage{graphicx}
+%\usepackage{wrapfig}
+\usepackage{amsmath}
+
+%\useoutertheme{infolines}
+\usetheme{Boadilla}
+\usecolortheme{seahorse}
+\setbeamertemplate{navigation symbols}{}
+\title{Counting Bits in an Array}
+\newcommand{\shorttitle}{64 Bit Intel Assembly Language}
+\newcommand{\shortauthor}{\copyright 2011 Ray Seyfarth}
+\author{Ray Seyfarth}
+\begin{document}
+
+
+\usefoottemplate{\vbox{
+\tinycolouredline{structure!55}%
+ {\color{white}{\textbf{\shorttitle}\hfill\textbf{\shortauthor}}}%
+}}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}
+\frametitle{Outline}
+\tableofcontents
+\end{frame}
+
+\section{Overview}
+
+\begin{frame}
+    \frametitle{Overview of counting bits}
+    \begin{itemize}
+        \item The basic goal is to count the number of 1 bits in an array
+        \item Several solutions are examined in C and assembly
+        \item In general C and assembly perform similarly
+        \item On CPUs with the {\tt popcnt} instruction, assembly rules
+    \end{itemize}
+\end{frame}
+
+\section{Counting 1 bits in C}
+
+\begin{frame}[fragile]
+    \frametitle{A simple C solution}
+\small
+\begin{verbatim}
+    long popcnt_array ( long *a, int size )
+    {
+        int w, b;
+        long word;
+        long n;
+        n = 0;
+        for ( w = 0; w < size; w++ ) {
+            word = a[w];
+            n += word & 1;
+            for ( b = 1; b < 64; b++ ) {
+                n += (word >> b) & 1;
+            }
+        }
+        return n;
+    }
+\end{verbatim}
+    \begin{itemize}
+        \item Checking every bit took 4.74 seconds to call {\tt popcnt\_array}
+              1000 times with 100000 longs (64 bits)
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Ending the loop earlier}
+\small
+    \begin{itemize}
+        \item A slightly better algorithm ends the inner loop when {\tt word} = 0
+        \item The time dropped to 3.34 seconds
+    \end{itemize}
+\begin{verbatim}
+    long popcnt_array ( unsigned long *a, int size )
+    {
+        int w, b;
+        unsigned long word;
+        long n;
+    
+        n = 0;
+        for ( w = 0; w < size; w++ ) {
+            word = a[w];
+            while ( word != 0 ) {
+                n += word & 1;
+                word >>= 1;
+            }
+        }
+        return n;
+    }
+\end{verbatim}
+\end{frame}
+
+\section{Counting 1 bit in assembly}
+
+\begin{frame}[fragile]
+    \frametitle{Counting 1 bits in assembly}
+    \begin{itemize}
+        \item I unrolled the inner loop 64 times
+        \item The code is too long to place in a slide
+        \item I split each 64 bit word into 4 16 bit words in separate registers
+        \item Then I added each bit of the four words into 4 different registers
+              allowing out-of-execution, pipeline filling and parallelism
+        \item It performed the test in 2.52 seconds, a bit better than C at 3.34
+        \item I did have a function of 1123 bytes
+    \end{itemize}
+\end{frame}
+
+\section{Precomputing 1 counts for all patterns of bytes}
+
+\begin{frame}[fragile]
+    \frametitle{Precomputing 1 counts for all pattern of bytes}
+\small
+\begin{verbatim}
+    long popcnt_array ( long *a, int size )
+    {
+        int b;
+        long n;
+        int word;
+    
+        n = 0;
+        for ( b = 0; b < size*8; b++ ) {
+            word = ((unsigned char *)a)[b];
+            n += count[word];
+        }
+        return n;
+    }
+\end{verbatim}
+    \begin{itemize}
+        \item The count array had a static initializer with 256 counts
+        \item The time dropped to 0.24 seconds, 10 times faster than the last version
+        \item I could only tie this code with an assembly version
+    \end{itemize}
+\end{frame}
+
+\section{Using the popcnt instruction}
+
+\begin{frame}[fragile]
+    \frametitle{Using the {\tt popcnt} instruction}
+    \begin{itemize}
+        \item Some newer computers (Intel Core i series and some Opterons) have
+              a {\tt popcnt} instruction which exactly matches the problem.`
+        \item After unrolling the loop 2 times, the operation took 0.04 seconds
+              on a Core i7 at 3.4 GHz
+    \end{itemize}
+\begin{verbatim}
+.count_more:
+        popcnt  rdx, [rdi+rcx*8]
+        add     rax, rdx
+        popcnt  r9, [rdi+rcx*8+8]
+        add     r8, r9
+        add     rcx, 2
+        cmp     rcx, rsi
+        jl      .count_more
+        add     rax, r8
+\end{verbatim}
+\end{frame}
+
+\end{document}

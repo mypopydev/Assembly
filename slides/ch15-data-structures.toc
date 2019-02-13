@@ -1,0 +1,5 @@
+\beamer@endinputifotherversion {3.10pt}
+\beamer@sectionintoc {1}{Linked lists}{4}{0}{1}
+\beamer@sectionintoc {2}{Doubly linked lists}{11}{0}{2}
+\beamer@sectionintoc {3}{Hash tables}{16}{0}{3}
+\beamer@sectionintoc {4}{Binary trees}{23}{0}{4}

@@ -1,0 +1,11 @@
+\frametitle {Moving data from one register to another}
+    \begin{itemize}
+        \item Use 2 register operands
+    \end{itemize}
+    \begin{verbatim}
+        mov     rax, rbx    ; move rbx to rax
+        mov     eax, ecx    ; move ecx to eax, zero filled
+        mov     cl, al      ; move al to cl, leave rest of
+                            ; unchanged
+    \end{verbatim}
+

@@ -1,0 +1,9 @@
+\beamer@endinputifotherversion {3.10pt}
+\beamer@sectionintoc {1}{Moving data in and out of floating point registers}{4}{0}{1}
+\beamer@sectionintoc {2}{Addition}{6}{0}{2}
+\beamer@sectionintoc {3}{Subtraction}{7}{0}{3}
+\beamer@sectionintoc {4}{Basic floating point instructions}{8}{0}{4}
+\beamer@sectionintoc {5}{Data conversion}{9}{0}{5}
+\beamer@sectionintoc {6}{Floating point comparisons}{11}{0}{6}
+\beamer@sectionintoc {7}{Mathematical functions}{12}{0}{7}
+\beamer@sectionintoc {8}{Sample floating point code}{16}{0}{8}

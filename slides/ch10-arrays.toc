@@ -1,0 +1,6 @@
+\beamer@endinputifotherversion {3.10pt}
+\beamer@sectionintoc {1}{Array address computation}{4}{0}{1}
+\beamer@sectionintoc {2}{General pattern for memory references}{5}{0}{2}
+\beamer@sectionintoc {3}{Allocating arrays}{8}{0}{3}
+\beamer@sectionintoc {4}{Processing arrays}{11}{0}{4}
+\beamer@sectionintoc {5}{Command line parameter array}{19}{0}{5}

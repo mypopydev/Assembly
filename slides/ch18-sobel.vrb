@@ -1,0 +1,14 @@
+\frametitle {Sobel using SSE instructions}
+    \begin{itemize}
+        \item 16 8 bit values can be placed in an XMM registers
+        \item The central 14 values can be used to compute 14 Sobel results
+        \item The code loaded the row $r-1$ and computed part of 14 Sobel results
+        \item Then it loaded row $r$ and added more to the 14 Sobel results
+        \item Last it loaded row $r+1$ and added more to the 14 Sobel results
+        \item The contributions were added, squared, $G_x^2$ added to $G_y^2$ for
+              14 $G$ values
+        \item The 14 $G$ values were written to the output image
+        \item Using 1000 different images it processed 980 images per second
+              vs 158 for the C code.
+        \item This is 6.2 times as fast
+    \end{itemize}

@@ -1,0 +1,7 @@
+\beamer@endinputifotherversion {3.10pt}
+\beamer@sectionintoc {1}{The stack}{4}{0}{1}
+\beamer@sectionintoc {2}{The call instruction}{6}{0}{2}
+\beamer@sectionintoc {3}{The return instruction}{7}{0}{3}
+\beamer@sectionintoc {4}{Function parameters}{8}{0}{4}
+\beamer@sectionintoc {5}{Stack frames}{11}{0}{5}
+\beamer@sectionintoc {6}{Recursion}{14}{0}{6}

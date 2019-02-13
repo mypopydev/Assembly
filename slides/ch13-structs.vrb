@@ -1,0 +1,22 @@
+\frametitle {Printing an array of customers}
+\small
+\begin{verbatim}
+          segment .data
+format    db    "%s %s %d",0x0a,0
+          segment .text
+          push  r15
+          push  r14
+          mov   r15, 100        ; counter saved through calls
+          mov   r14, [customers]; pointer saved through calls
+more      lea   edi, [format]
+          lea   esi, [r14+c_name]
+          lea   rdx, [r14+c_address]
+          mov   rcx. [r14+c_balance]
+          call  printf
+          add   r14, Customer_size
+          sub   r15, 1
+          jnz   more
+          pop   r14
+          pop   r15
+          ret
+\end{verbatim}

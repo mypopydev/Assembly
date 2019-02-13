@@ -1,0 +1,8 @@
+\beamer@endinputifotherversion {3.10pt}
+\beamer@sectionintoc {1}{Opening a file}{4}{0}{1}
+\beamer@sectionintoc {2}{Using fscanf and fprintf}{6}{0}{2}
+\beamer@sectionintoc {3}{Using fgetc and fputc}{7}{0}{3}
+\beamer@sectionintoc {4}{Using fgets and fputs}{9}{0}{4}
+\beamer@sectionintoc {5}{Using fread and fwrite}{11}{0}{5}
+\beamer@sectionintoc {6}{Using fseek and ftell}{12}{0}{6}
+\beamer@sectionintoc {7}{Closing a file}{14}{0}{7}

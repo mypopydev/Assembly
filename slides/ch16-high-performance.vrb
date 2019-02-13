@@ -1,0 +1,8 @@
+\frametitle {Reduce dependencies to allow super-scalar execution}
+    \begin{itemize}
+        \item Use different registers to try to reduce dependencies
+        \item The CPU has multiple computational units in 1 core
+        \item You can benefit from out-of-order execution
+        \item You can get more out of pipelines
+        \item You can keep more computational units busy
+    \end{itemize}

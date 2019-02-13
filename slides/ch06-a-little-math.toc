@@ -1,0 +1,8 @@
+\beamer@endinputifotherversion {3.10pt}
+\beamer@sectionintoc {1}{Negation}{4}{0}{1}
+\beamer@sectionintoc {2}{Addition}{5}{0}{2}
+\beamer@sectionintoc {3}{Subtraction}{7}{0}{3}
+\beamer@sectionintoc {4}{Multiplication}{9}{0}{4}
+\beamer@sectionintoc {5}{Division}{11}{0}{5}
+\beamer@sectionintoc {6}{Conditional move instructions}{12}{0}{6}
+\beamer@sectionintoc {7}{Why use a register?}{14}{0}{7}

@@ -1,0 +1,416 @@
+\documentclass{beamer}
+
+\usepackage{geometry}
+\usepackage{graphicx}
+%\usepackage{wrapfig}
+\usepackage{amsmath}
+
+%\useoutertheme{infolines}
+\usetheme{Boadilla}
+\usecolortheme{seahorse}
+\setbeamertemplate{navigation symbols}{}
+\title{Arrays}
+\newcommand{\shorttitle}{64 Bit Intel Assembly Language}
+\newcommand{\shortauthor}{\copyright 2011 Ray Seyfarth}
+\author{Ray Seyfarth}
+\begin{document}
+
+
+\usefoottemplate{\vbox{
+\tinycolouredline{structure!55}%
+ {\color{white}{\textbf{\shorttitle}\hfill\textbf{\shortauthor}}}%
+}}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}
+    \frametitle{Arrays}
+    \begin{itemize}
+        \item An array is a contiguous collection of memory cells
+              of a specific type
+        \item The start address of an array is the address of the first element
+        \item This is associated with the label given before a data definition
+              in the data segment or a data reservation in the bss segment
+        \item The first index of an array in C/C++ and assembly is 0
+        \item Each subsequent array cell is at a higher memory address
+        \item The final index for an array of $n$ elements is $n-1$
+        \item Some high level languages use different or user-selectable starting
+              indices for arrays
+        \item Fortran defaults to 1
+        \item 0 is the most logical first index because it simplifies array address
+              computation
+    \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Outline}
+\tableofcontents
+\end{frame}
+
+\section{Array address computation}
+
+\begin{frame}[fragile]
+    \frametitle{Array address computation}
+    \begin{itemize}
+        \item Array elements all have the same size: 1, 2, 4 and 8 are common
+        \item Suppose an array has elements of size 4 and starts at address {\tt 0x10000}
+        \begin{itemize}
+            \item The first element (at index 0) is at {\tt 0x10000}
+            \item The second element (at index 1) is at {\tt 0x10004}
+            \item The third element (at index 2) is at {\tt 0x10008}
+            \item Element number {\tt k} is at address {\tt 0x10000 + k*4}
+        \end{itemize}
+        \item Let's examine the arrays for program ``{\tt array.asm}''
+              with {\tt gdb} or {\tt ebe}
+    \end{itemize}
+    \begin{verbatim}
+        segment .bss
+a       resb      100
+b       resd      100
+        align     8
+c       resq      100
+    \end{verbatim}
+\end{frame}
+
+\section{General pattern for memory references}
+
+\begin{frame}[fragile]
+    \frametitle{General pattern for memory references}
+\small
+\begin{tabular}{ll}
+ {\tt [label]} & the value contained at label\\
+ {\tt [label+2*ind]} & the value contained at the memory address obtained \\
+                     & by adding the label and index register times 2\\
+ {\tt [label+4*ind]} & the value contained at the memory address obtained \\
+                     & by adding the label and index register times 4\\
+ {\tt [label+8*ind]} & the value contained at the memory address obtained \\
+                     & by adding the label and index register times 8\\
+ {\tt [reg]} &   the value contained at the memory address in the register\\
+ {\tt [reg+k*ind]} & the value contained at the memory address obtained \\
+                     & by adding the register and index register times k\\
+ {\tt [label+reg+k*ind]} & the value contained at the memory address obtained \\
+                     & by adding the label, the register and index register times k\\
+ {\tt [n+reg+k*ind]} & the value contained at the memory address obtained \\
+                     & by adding n, the register and index register times k
+\end{tabular}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Memory references}
+    \begin{itemize}
+        \item For items in the data and bss segments we can use a label
+        \item For arrays passed into functions the address is passed in a register
+        \item Soon we will be allocating memory using {\tt malloc}
+        \begin{itemize}
+            \item This address will typically be stored in memory
+            \item Later to use the data, we must load the address from memory
+                  into a register
+            \item Then we can use a register form of memory reference
+        \end{itemize}
+        \item The use of a number or a label is equivalent to the computer
+        \item Both use the same instruction and place the number or label value
+              into the same field of the instruction
+        \item Using multipliers of 2, 4 or 8 are essentially ``free'' with index
+              registers
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Example using base registers and an index register}
+    \begin{itemize}
+        \item In the function below the first parameter is the address of
+              the first dword of a destination array
+        \item The second parameter is the address of the source array
+        \item The third parameter is the number of dwords to copy
+        \item It would generally be faster to use ``{\tt rep movsd}''
+    \end{itemize}
+
+\begin{verbatim}
+        segment .text
+        global  copy_array
+copy_array:
+        xor     ecx, ecx
+more:   mov     eax, [rsi+4*rcx]
+        mov     [rdi+4*rcx], eax
+        add     rcx, 1
+        test    rcx, rdx
+        jne     more
+        xor     eax, eax
+        ret
+\end{verbatim}
+\end{frame}
+
+\section{Allocating arrays}
+
+\begin{frame}[fragile]
+    \frametitle{Allocating arrays}
+    \begin{itemize}
+        \item We will allocate arrays using the C {\tt malloc} function
+    \end{itemize}
+\begin{verbatim}
+    void *malloc ( long size );
+\end{verbatim}
+    \begin{itemize}
+        \item The parameter to {\tt malloc} is the number of bytes to allocate
+        \item {\tt malloc} returns the address of the array or 0
+        \item Data allocated should be freed, although this will happen when a
+              program exits
+    \end{itemize}
+\begin{verbatim}
+        void free ( void *ptr );
+\end{verbatim}
+
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Code to allocate an array}
+    \begin{itemize}
+        \item The code below allocates an array of 1 billion bytes
+        \item It saves the pointer to the new array in memory location
+              named {\tt pointer}
+    \end{itemize}
+
+\begin{verbatim}
+        extern  malloc
+        ...
+        mov     rdi, 1000000000
+        call    malloc
+        mov     [pointer], rax
+\end{verbatim}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Advantages for using allocated arrays}
+    \begin{itemize}
+        \item The array will be the right size
+        \item There are size limits of about 2 GB in the data and bss segments
+        \item The assembler is very slow with large arrays and the program is large
+        \item Assembling a program with a 2 GB array in the bss segment
+              took about 100 seconds
+        \item The executable was over 2 GB
+        \item Using {\tt malloc} the program assembles in less than 1 second
+              and the program as about 10 KB
+        \item Modified to allocate 20 billion bytes the program executes in 3 milliseconds
+    \end{itemize}
+\end{frame}
+
+\section{Processing arrays}
+
+\begin{frame}
+    \frametitle{Processing arrays}
+    \begin{itemize}
+        \item We present an application which creates an array
+        \item Fills the array with random data by calling {\tt random}
+        \item Prints the array if the size is small (up to 20 elements)
+        \item Determines the minimum value in the array
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Creating an array}
+    \begin{itemize}
+        \item This function allocates an array of double words
+        \item The number of double words is the only parameter
+        \item Note the use of a stack frame to avoid any problems
+              of stack misalignment
+    \end{itemize}
+\begin{verbatim}
+;       array = create ( size );
+create:
+        push    rbp
+        mov     rbp, rsp
+        imul    rdi, 4
+        call    malloc
+        leave
+        ret
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Filling the array with random numbers}
+\footnotesize
+\begin{verbatim}
+fill:
+.array  equ     0
+.size   equ     8
+.i      equ     16
+        push    rbp
+        mov     rbp, rsp
+        sub     rsp, 32
+        mov     [rsp+.array], rdi
+        mov     [rsp+.size], rsi
+        xor     ecx, ecx
+.more   mov     [rsp+.i], rcx
+        call    random
+        mov     rcx, [rsp+.i]
+        mov     rdi, [rsp+.array]
+        mov     [rdi+rcx*4], eax
+        inc     rcx
+        cmp     rcx, [rsp+.size]
+        jl      .more
+        leave
+        ret
+\end{verbatim}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Local labels in {\tt yasm}}
+    \begin{itemize}
+        \item Labels beginning with a dot are local labels
+        \item They are considered part of the previous normal label
+        \item The {\tt .more} label could be referenced as {\tt fill.more}
+              from outside the {\tt fill} function
+        \item The {\tt fill} function keeps saving {\tt rcx} on the stack and
+              restoring {\tt rcx} and {\tt rdi} around the {\tt random} call
+        \item This could be easier to code using registers which are preserved
+              across calls
+    \end{itemize}
+\end{frame}
+
+
+\begin{frame}[fragile]
+    \frametitle{Filling the array with random numbers (2)}
+\scriptsize
+\begin{verbatim}
+fill:
+.r12    equ     0
+.r13    equ     8
+.r14    equ     16
+        push    rbp
+        mov     rbp, rsp
+        sub     rsp, 32
+        mov     [rsp+.r12], r12
+        mov     [rsp+.r13], r13
+        mov     [rsp+.r14], r14
+        mov     r12, rdi        ; r12 is the array address
+        mov     r13, rsi        ; r13 is the size
+        xor     r14d, r14d      ; loop counter
+.more   call    random
+        mov     [r12+r14*4], eax
+        inc     r14
+        cmp     r14, r13
+        jl      .more
+        mov     r12, [rsp+.r12]
+        mov     r13, [rsp+.r13]
+        mov     r14, [rsp+.r14]
+        leave
+        ret
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Printing the array}
+\footnotesize
+\begin{verbatim}
+print:
+.array  equ     0
+.size   equ     8
+.i      equ     16
+        ...
+        segment .data
+.format:
+        db      "%10d",0x0a,0
+        segment .text
+.more   lea     rdi, [.format]
+        mov     rdx, [rsp+.array]
+        mov     rcx, [rsp+.i]
+        mov     rsi, [rdx+rcx*4]
+        mov     [rsp+.i], rcx
+        call    printf
+        mov     rcx, [rsp+.i]
+        inc     rcx
+        mov     [rsp+.i], rcx
+        cmp     rcx, [rsp+.size]
+        jl      .more
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Finding the minimum value in the array}
+    \begin{itemize}
+        \item This function calls no other function
+        \item There is no need for a stack frame
+        \item A conditional move is faster than branching
+    \end{itemize}
+
+\begin{verbatim}
+;       x = min ( a, size );
+min:
+        mov     eax, [rdi]       ; start with a[0]
+        mov     rcx, 1
+.more   mov     r8d, [rdi+rcx*4] ; get a[i]
+        cmp     r8d, eax
+        cmovl   eax, r8d         ; move if smaller
+        inc     rcx
+        cmp     rcx, rsi
+        jl      .more
+        ret
+\end{verbatim}
+\end{frame}
+
+\begin{frame}
+    \frametitle{The main program and testing}
+    \begin{itemize}
+        \item The code is too long, so we will inspect it in an editor
+        \item It's also time to test with {\tt gdb} or {\tt ebe}
+    \end{itemize}
+\end{frame}
+
+\section{Command line parameter array}
+
+\begin{frame}[fragile]
+    \frametitle{Command line parameter array}
+    \begin{itemize}
+        \item The first argument to {\tt main} is the number of command line parameters
+        \item The second argument is the address of an array of character pointers, each
+              pointing to one of the parameters
+        \item Below is a C program illustrating the use of command line parameters
+    \end{itemize}
+\begin{verbatim}
+    #include <stdio.h>
+
+    int main ( int argc, char *argv[] )
+    {
+        int i;
+        for ( i = 0; i < argc; i++ ) {
+            printf("%s\n", argv[i]);
+        }
+        return 0;
+    }
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Assembly program listing command line parameters}
+    \footnotesize
+\begin{verbatim}
+        segment .data
+format  db      "%s",0x0a,0
+        segment .text
+        global  main        ; let the linker know about main
+        extern  printf      ; resolve printf from libc
+main:   push    rbp         ; prepare stack frame for main
+        mov     rbp, rsp
+        sub     rsp, 16
+        mov     rcx, rsi    ; move argv to rcx
+        mov     rsi, [rcx]  ; get first argv string
+start_loop:   
+        lea     rdi, [format]
+        mov     [rsp], rcx  ; save argv
+        call    printf
+        mov     rcx, [rsp]  ; restore rsi
+        add     rcx, 8      ; advance to next pointer in argv
+        mov     rsi, [rcx]  ; get next argv string
+        cmp     rsi, 0      
+        jnz     start_loop  ; end with NULL pointer
+end_loop:
+        xor     eax, eax
+        leave
+        ret
+\end{verbatim}
+\end{frame}
+
+\end{document}

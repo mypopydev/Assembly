@@ -1,0 +1,392 @@
+\documentclass{beamer}
+
+\usepackage{geometry}
+\usepackage{graphicx}
+%\usepackage{wrapfig}
+\usepackage{amsmath}
+
+%\useoutertheme{infolines}
+\usetheme{Boadilla}
+\usecolortheme{seahorse}
+\setbeamertemplate{navigation symbols}{}
+\title{Floating Point Instructions}
+\newcommand{\shorttitle}{64 Bit Intel Assembly Language}
+\newcommand{\shortauthor}{\copyright 2011 Ray Seyfarth}
+\author{Ray Seyfarth}
+\begin{document}
+
+
+\usefoottemplate{\vbox{
+\tinycolouredline{structure!55}%
+ {\color{white}{\textbf{\shorttitle}\hfill\textbf{\shortauthor}}}%
+}}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}
+    \frametitle{Floating point instructions}
+    \begin{itemize}
+        \item PC floating point operations were once done in a separate chip - 8087
+        \item This chip managed a stack of eight 80 bit floating point values
+        \item The stack and instructions still exist, but are largely ignored
+        \item x86-64 CPUs have 16 floating point registers (128 or 256 bits)
+        \item These registers can be used for single data instructions or 
+              single instruction multiple data instructions (SIMD)
+        \item We will focus on these newer registers
+        \item The older instructions tended to start with the letter ``{\tt f}''
+              and referenced the stack using register names like {\tt ST0}
+        \item The newer instructions reference using registers with names like
+              ``{\tt XMMO}''
+    \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Outline}
+\tableofcontents
+\end{frame}
+
+\section{Moving data in and out of floating point registers}
+
+\begin{frame}[fragile]
+    \frametitle{Moving scalars to or from floating point registers}
+    \begin{itemize}
+        \item {\tt movss} moves a single 32 bit floating point value to or from
+              an {\tt XMM} register
+        \item {\tt movsd} moves a single 64 bit floating point value
+        \item There is no implicit data conversion - unlike the old instructions
+              which converted floating point data to an 80 bit internal format
+        \item The instructions follow the standard pattern of having possibly
+              one memory address
+    \end{itemize}
+\begin{verbatim}
+    movss   xmm0, [x]   ; move value at x into xmm0
+    movsd   [y], xmm1   ; move value from xmm1 to y
+    movss   xmm2, xmm0  ; move from xmm0 to xmm2
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Moving packed data}
+    \begin{itemize}
+        \item The {\tt XMM} registers are 128 bits
+        \item They can hold 4 floats or 2 doubles (or integers of various sizes)
+        \item On newer CPUs they are extended to 256 bits and referred to as 
+              {\tt YMM} registers when using all 256 bits
+        \item {\tt movaps} moves 4 floats to/from a memory address aligned
+              at a 16 byte boundary
+        \item {\tt movups} does the same task with unaligned memory addresses
+        \item The Core i series performs unaligned moves efficiently
+        \item {\tt movapd} moves 2 doubles to/from a memory address aligned
+              at a 16 byte boundary
+        \item {\tt movupd} does the same task with unaligned memory addresses
+    \end{itemize}
+\begin{verbatim}
+    movups  xmm0, [x]   ; move 4 floats to xmm0
+    movupd  [a], xmm15  ; move 2 doubles to a
+\end{verbatim}
+\end{frame}
+
+\section{Addition}
+
+\begin{frame}[fragile]
+    \frametitle{Floating point addition}
+\begin{itemize}
+    \item {\tt addss} adds a scalar float (single precision) to another
+    \item {\tt addsd} adds a scalar double to another
+    \item {\tt addps} adds 4 floats to 4 floats - pairwise addition
+    \item {\tt addpd} adds 2 doubles to 2 doubles
+    \item There are 2 operands: destination and source
+    \item The source can be memory or an {\tt XMM} register
+    \item The destination must be an {\tt XMM} register
+    \item Flags are unaffected
+\end{itemize}
+
+\begin{verbatim}
+    movss   xmm0, [a]  ; load a
+    addss   xmm0, [b]  ; add b to a
+    movss   [c], xmm0  ; store sum in c
+    movapd  xmm0, [a]  ; load 2 doubles from a
+    addpd   xmm0, [b]  ; add a[0]+b[0] and a[1]+b[1]
+    movapd  [c], xmm0  ; store 2 sums in c
+\end{verbatim}
+\end{frame}
+
+\section{Subtraction}
+
+\begin{frame}[fragile]
+    \frametitle{Floating point subtraction}
+    \begin{itemize}
+        \item {\tt subss} subtracts the source float from the destination
+        \item {\tt subsd} subtracts the source double from the destination
+        \item {\tt subps} subtracts 4 floats from 4 floats
+        \item {\tt subpd} subtracts 2 doubles from 2 doubles
+    \end{itemize}
+\begin{verbatim}
+    movss   xmm0, [a]  ; load a
+    subss   xmm0, [b]  ; add b from a
+    movss   [c], xmm0  ; store a-b in c
+    movapd  xmm0, [a]  ; load 2 doubles from a
+    subpd   xmm0, [b]  ; add a[0]-b[0] and a[1]-b[1]
+    movapd  [c], xmm0  ; store 2 differences in c
+\end{verbatim}
+\end{frame}
+
+\section{Basic floating point instructions}
+
+\begin{frame}
+    \frametitle{Basic floating point instructions}
+\small
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+instruction & effect \\
+\hline
+{\tt addsd} & add scalar double \\
+\hline
+{\tt addss} & add scalar float \\
+\hline
+{\tt addpd} & add packed double \\
+\hline
+{\tt addps} & add packed float \\
+\hline
+{\tt subsd} & subtract scalar double \\
+\hline
+{\tt subss} & subtract scalar float \\
+\hline
+{\tt subpd} & subtract packed double \\
+\hline
+{\tt subps} & subtract packed float \\
+\hline
+{\tt mulsd} & multiply scalar double \\
+\hline
+{\tt mulss} & multiply scalar float \\
+\hline
+{\tt mulpd} & multiply packed double \\
+\hline
+{\tt mulps} & multiply packed float \\
+\hline
+{\tt divsd} & divide scalar double \\
+\hline
+{\tt divss} & divide scalar float \\
+\hline
+{\tt divpd} & divide packed double \\
+\hline
+{\tt divps} & divide packed float \\
+\hline
+\end{tabular}
+\end{center}
+\end{frame}
+
+\section{Data conversion}
+
+\begin{frame}[fragile]
+    \frametitle{Conversion to a different length floating point}
+    \begin{itemize}
+        \item {\tt cvtss2sd} converts a scalar single (float) to a scalar double
+        \item {\tt cvtps2pd} converts 2 packed floats to 2 packed doubles
+        \item {\tt cvtsd2ss} converts a scalar double to a scalar float
+        \item {\tt cvtpd2ps} converts 2 packed doubles to 2 packed floats
+    \end{itemize}
+\begin{verbatim}
+    cvtss2sd    xmm0, [a]  ; get a into xmm0 as a double
+    addsd       xmm0, [b]  ; add a double to a
+    cvtsd2ss    xmm0, xmm0 ; convert to float
+    movss       [c], xmm0
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Converting floating point to/from integer}
+    \begin{itemize}
+        \item {\tt cvtss2si} converts a float to a double word or quad word integer
+        \item {\tt cvtsd2si} converts a float to a double word or quad word integer
+        \item These 2 round the value
+        \item {\tt cvttss2si} and {\tt cvttsd2si} convert by truncation
+        \item {\tt cvtsi2ss} converts an integer to a float in an {\tt XMM} register
+        \item {\tt cvtsi2sd} converts an integer to a double in an {\tt XMM} register
+        \item When converting from memory a size qualifier is needed
+    \end{itemize}
+\begin{verbatim}
+    cvtss2si    eax, xmm0   ; convert to dword integer
+    cvtsi2sd    xmm0, rax   ; convert qword to double
+    cvtsi2sd    xmm0, dword [x] ; convert dword integer
+\end{verbatim}
+\end{frame}
+
+\section{Floating point comparisons}
+
+\begin{frame}[fragile]
+    \frametitle{Unordered versus ordered comparisons}
+    \begin{itemize}
+        \item Floating point comparisons can cause exceptions
+        \item Ordered comparisons cause exceptions one QNaN or SNaN
+        \begin{itemize}
+            \item QNaN means ``quiet not a number''
+            \item SNaN means ``signalling not a number''
+            \item Both have all exponent field bits set to 1
+            \item QNaN has its top fraction bit equal to 1
+        \end{itemize}
+        \item An unordered comparison causes exceptions only for SNaN
+        \item {\tt gcc} uses unordered comparisons
+        \item If it's good enough for {\tt gcc}, it's good enough for me
+        \item {\tt ucomiss} compares floats
+        \item {\tt ucomisd} compares doubles
+        \item The first operand must be an {\tt XMM} register
+        \item They set the zero flag, parity flag and carry flags
+    \end{itemize}
+\small
+\begin{verbatim}
+    movss   xmm0, [a]
+    mulss   xmm0, [b]
+    ucomiss xmm0, [c]
+    jmple   less_eq   ; jmp if a*b <= c
+\end{verbatim}
+\end{frame}
+
+\section{Mathematical functions}
+
+\begin{frame}[fragile]
+    \frametitle{Mathematical functions}
+    \begin{itemize}
+        \item 8087 had sine, cosine, arctangent and more
+        \item The newer instructions omit these operations on {\tt XMM} registers
+        \item Instead you are supposed to use efficient library functions
+        \item There are instructions for
+        \begin{itemize}
+            \item Minimum
+            \item Maximum
+            \item Rounding
+            \item Square root
+            \item Reciprocal of square root
+        \end{itemize}
+    \end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Minimum and maximum}
+    \begin{itemize}
+        \item {\tt minss} and {\tt maxss} compute minimum or maximum of scalar floats
+        \item {\tt minsd} and {\tt maxsd} compute minimum or maximum of scalar doubles
+        \item The destination operand must be an {\tt XMM} register
+        \item The source can be an {\tt XMM} register or memory
+        \item {\tt minps} and {\tt maxps} compute minimum or maximum of packed floats
+        \item {\tt minpd} and {\tt maxpd} compute minimum or maximum of packed doubles
+        \item {\tt minps  xmm0, xmm1} computes 4 minimums and places them in
+              {\tt xmm0}
+    \end{itemize}
+\begin{verbatim}
+    movss   xmm0, [x]   ; move x into xmm0
+    maxss   xmm0, [y]   ; xmm0 has max(x,y)
+    movapd  xmm0, [a]   ; move a[0] and a[1] into xmm0
+    minpd   xmm0, [b]   ; xmm0[0] has min(a[0],b[0])
+                        ; xmm0[1] has min(a[1],b[1])
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Rounding}
+    \begin{itemize}
+        \item {\tt roundss} rounds 1 float
+        \item {\tt roundps} rounds 4 floats
+        \item {\tt roundsd} rounds 1 double
+        \item {\tt roundpd} rounds 2 doubles
+        \item The first operand is an {\tt XMM} destination register
+        \item The second is the source in an {\tt XMM} register or memory
+        \item The third operand is a rounding mode
+    \end{itemize}
+\begin{center}
+    \begin{tabular}{|c|l|}
+        \hline
+        mode & meaning \\
+        \hline
+        0    & round, giving ties to even numbers \\
+        \hline
+        1    & round down \\
+        \hline
+        2    & round up \\
+        \hline
+        3    & round toward 0 (truncate) \\
+        \hline
+    \end{tabular}
+\end{center}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Square roots}
+    \begin{itemize}
+        \item {\tt sqrtss} computes 1 float square root
+        \item {\tt sqrtps} computes 4 float square roots
+        \item {\tt sqrtsd} computes 1 double square root
+        \item {\tt sqrtpd} computes 2 double square roots
+        \item The first operand is an {\tt XMM} destination register
+        \item The second is the source in an {\tt XMM} register or memory
+    \end{itemize}
+\end{frame}
+
+\section{Sample floating point code}
+
+\begin{frame}[fragile]
+    \frametitle{Distance in 3D}
+$$d = \sqrt{((x_1-x_2)^2+(y_1-y_2)^2+(z_1-z_2)^2)}$$
+\begin{verbatim}
+    distance3d:
+        movss   xmm0, [rdi]     ; x from first point
+        subss   xmm0, [rsi]     ; subtract x from second point
+        mulss   xmm0, xmm0      ; (x1-x2)^2
+        movss   xmm1, [rdi+4]   ; y from first point
+        subss   xmm1, [rsi+4]   ; subtract y from second point
+        mulss   xmm1, xmm1      ; (y1-y2)^2
+        movss   xmm2, [rdi+8]   ; z from first point
+        subss   xmm2, [rsi+8]   ; subtract z from second point
+        mulss   xmm2, xmm2      ; (z1-z2)^2
+        addss   xmm0, xmm1      ; add x and y parts
+        addss   xmm0, xmm2      ; add z part
+        sqrt    xmm0, xmm0
+        ret
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Dot product in 3D}
+$$d = x_1x_2 + y_1y_2 + z_1z_2$$
+\begin{verbatim}
+dot_product:
+        movss   xmm0, [rdi]
+        mulss   xmm0, [rsi]
+        movss   xmm1, [rdi+4]
+        mulss   xmm1, [rsi+4]
+        addss   xmm0, xmm1
+        movss   xmm2, [rdi+8]
+        mulss   xmm2, [rsi+8]
+        addss   xmm0, xmm2
+        ret
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Polynomial evaluation by Horner's Rule}
+$$P(x) = p_0 + p_1x + p_2x^2 \cdots p_nx^n$$
+\begin{align*}
+    b_n      &= p_n \\
+   b_{n-1}   &= p_{n-1} + b_nx \\
+   b_{n-2}   &= p_{n-2} + b_{n-1}x \\
+    b_0      &= p_0 + b_1x
+\end{align*}
+\begin{verbatim}
+horner: movsd   xmm1, xmm0          ; use xmm1 as x
+        movsd   xmm0, [rdi+rsi*8]   ; accumulator for b_k
+        test    esi, 0              ; is the degree 0?
+        jz      done
+more:   sub     esi, 1
+        mulsd   xmm0, xmm1          ; b_k * x
+        addsd   xmm0, [rdi+rsi*8]   ; add p_k
+        jnz     more
+done:   ret
+\end{verbatim}
+\end{frame}
+
+\end{document}

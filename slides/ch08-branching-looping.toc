@@ -1,0 +1,6 @@
+\beamer@endinputifotherversion {3.10pt}
+\beamer@sectionintoc {1}{Unconditional jump}{4}{0}{1}
+\beamer@sectionintoc {2}{Conditional jump}{7}{0}{2}
+\beamer@sectionintoc {3}{Looping with conditional jumps}{10}{0}{3}
+\beamer@sectionintoc {4}{Loop instructions}{19}{0}{4}
+\beamer@sectionintoc {5}{Repeat string (array) instructions}{20}{0}{5}

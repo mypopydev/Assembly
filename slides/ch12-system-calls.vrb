@@ -1,0 +1,13 @@
+\frametitle {The close system call}
+    \begin{verbatim}
+    int close ( int fd );
+    \end{verbatim}
+    \begin{itemize}
+        \item You should make a habit of closing files when no longer needed
+        \item They will be closed when the process ends
+        \item No data is buffered in the user process, so data written to
+              unclosed files will be written
+        \item Closing will reduce overhead in the kernel
+        \item There is a per-process limit on open files
+        \item Use ``{\tt ulimit -a}'' to see your limits
+    \end{itemize}

@@ -1,0 +1,6 @@
+\beamer@endinputifotherversion {3.10pt}
+\beamer@sectionintoc {1}{Overview}{3}{0}{1}
+\beamer@sectionintoc {2}{Counting 1 bits in C}{4}{0}{2}
+\beamer@sectionintoc {3}{Counting 1 bit in assembly}{6}{0}{3}
+\beamer@sectionintoc {4}{Precomputing 1 counts for all patterns of bytes}{7}{0}{4}
+\beamer@sectionintoc {5}{Using the popcnt instruction}{8}{0}{5}

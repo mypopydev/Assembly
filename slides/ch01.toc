@@ -1,0 +1,7 @@
+\beamer@endinputifotherversion {3.10pt}
+\beamer@sectionintoc {1}{Goals for this course}{3}{0}{1}
+\beamer@sectionintoc {2}{Why study assembly language?}{4}{0}{2}
+\beamer@sectionintoc {3}{What is a computer?}{7}{0}{3}
+\beamer@sectionintoc {4}{Machine language}{10}{0}{4}
+\beamer@sectionintoc {5}{Assembly language}{11}{0}{5}
+\beamer@sectionintoc {6}{Assembling and linking}{15}{0}{6}

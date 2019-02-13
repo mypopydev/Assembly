@@ -1,0 +1,159 @@
+\documentclass{beamer}
+
+\usepackage{geometry}
+\usepackage{graphicx}
+%\usepackage{wrapfig}
+\usepackage{amsmath}
+
+%\useoutertheme{infolines}
+\usetheme{Boadilla}
+\usecolortheme{seahorse}
+\setbeamertemplate{navigation symbols}{}
+\title{Sobel Filter}
+\newcommand{\shorttitle}{64 Bit Intel Assembly Language}
+\newcommand{\shortauthor}{\copyright 2011 Ray Seyfarth}
+\author{Ray Seyfarth}
+\begin{document}
+
+
+\usefoottemplate{\vbox{
+\tinycolouredline{structure!55}%
+ {\color{white}{\textbf{\shorttitle}\hfill\textbf{\shortauthor}}}%
+}}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}
+\frametitle{Outline}
+\tableofcontents
+\end{frame}
+
+\section{Overview}
+
+\begin{frame}
+    \frametitle{Overview}
+    \begin{itemize}
+        \item The Sobel filter is an image processing edge detection algorithm
+        \item It involves convolution of $3\times 3$ image windows with
+              2 convolution matrices
+    \end{itemize}
+$$
+S_x = \left[\begin{matrix}
+                -1 & 0 & 1 \\
+                -2 & 0 & 2 \\
+                -1 & 0 & 1
+                \end{matrix}\right]
+                \qquad\qquad
+S_y = \left[\begin{matrix}
+                -1 & -2 & -1 \\
+                 0 & 0 & 0 \\
+                 1 & 2 & 1
+                \end{matrix}\right]
+$$
+    \begin{itemize}
+        \item The edge value, $G$, for a pixel at $(r,c)$ is computed by
+    \end{itemize}
+$$G_x = \sum_{i=-1}^{1}\sum_{j=-1}^1(S_{x,i,j}* I_{r+i,c+i})$$
+$$G_y = \sum_{i=-1}^{1}\sum_{j=-1}^1(S_{y,i,j}*I_{r+i,c+i})$$
+$$G = \sqrt{G_x^2+G_y^2}$$`
+\end{frame}
+
+\section{Sobel in C}
+
+\begin{frame}[fragile]
+    \frametitle{A simple C solution}
+\small
+\begin{verbatim}
+#include <math.h>
+#define matrix(a,b,c) a[(b)*(cols)+(c)]
+void sobel(unsigned char *data, float *output, long rows, long cols)
+{
+   int r, c;
+   int gx, gy;
+   for ( r = 1; r < rows-1; r++ ) {
+      for ( c = 1; c < cols-1; c++ ) {
+         gx = -matrix(data,r-1,c-1) + matrix(data,r-1,c+1) +
+              -2*matrix(data,r,c-1) + 2*matrix(data,r,c+1) +
+              -matrix(data,r+1,c-1) + matrix(data,r+1,c+1);
+         gy = -matrix(data,r-1,c-1) - 2*matrix(data,r-1,c)
+              - matrix(data,r-1,c+1) +
+              matrix(data,r+1,c-1) + 2*matrix(data,r+1,c)
+              + matrix(data,r+1,c+1);
+         matrix(output,r,c) = sqrt((float)(gx)*(float)(gx)+
+                                   (float)(gy)*(float)(gy));
+      }
+   }
+}
+\end{verbatim}
+\end{frame}
+
+\section{Sobel computed using SSE instructions}
+
+\begin{frame}[fragile]
+    \frametitle{Sobel using SSE instructions}
+    \begin{itemize}
+        \item 16 8 bit values can be placed in an XMM registers
+        \item The central 14 values can be used to compute 14 Sobel results
+        \item The code loaded the row $r-1$ and computed part of 14 Sobel results
+        \item Then it loaded row $r$ and added more to the 14 Sobel results
+        \item Last it loaded row $r+1$ and added more to the 14 Sobel results
+        \item The contributions were added, squared, $G_x^2$ added to $G_y^2$ for
+              14 $G$ values
+        \item The 14 $G$ values were written to the output image
+        \item Using 1000 different images it processed 980 images per second
+              vs 158 for the C code.
+        \item This is 6.2 times as fast
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{New instructions used for Sobel}
+\begin{description}
+    \item [pxor] This instruction performs an exclusive or on a 128 XMM
+          source register or memory and stores the result in the destination register.
+    \item [movdqa] This instruction moves 128 bits of aligned data from memory
+                   to a register, from a register to memory, or from a register
+                   to a register.
+    \item [movdqu] This instruction moves 128 bits of unaligned data from memory
+                   to a register, from a register to memory, or from a register
+                   to a register.
+    \item [psrldq] This instruction shifts the destination XMM register right the
+                   number of bytes specified in the second immediate operand.
+    \item [punpcklbw] This instruction unpacks the low 8 bytes of 2 XMM registers
+                   and intermingles them. I used this with the second register
+                   holding all 0 bytes to form 8 words in the destination.
+    \item [punpckhbw] This instruction unpacks the upper 8 bytes of 2 XMM
+                   registers and intermingles them.
+\end{description}
+\end{frame}
+
+\begin{frame}
+    \frametitle{New instructions used for Sobel (2)}
+\begin{description}
+    \item [paddw]  This instruction adds 8 16 bit integers from the second
+                   operand to the first operand.  At least one of the operands
+                   must be an XMM register and one can be a memory field.
+    \item [psubw]  This instruction subtracts the second set of 8 16 bit integers
+                   from the first set.
+    \item [pmullw] This instruction multiplies the first set of 8 16 bit integers
+                   times the second set and store the low order 16 bits of the
+                   products in the first operand.
+    \item [punpcklwd]   This instruction unpacks and interleaves words from
+                   the lower halves 2 XMM registers into the destination register.
+    \item [punpckhwd]   This instruction unpacks and interleaves words from
+                   the upper halves 2 XMM registers into the destination register.
+    \item [cvtdq2ps]  This instruction converts 4 double word integers into
+                   4 double word floating point values.
+\end{description}
+\end{frame}
+
+\begin{frame}
+    \frametitle{The Sobel assembly code}
+    \begin{itemize}
+        \item This code is far too long to examine in slides
+    \end{itemize}
+\end{frame}
+
+\end{document}

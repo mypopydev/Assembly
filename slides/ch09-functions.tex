@@ -1,0 +1,327 @@
+\documentclass{beamer}
+
+\usepackage{geometry}
+\usepackage{graphicx}
+%\usepackage{wrapfig}
+\usepackage{amsmath}
+
+%\useoutertheme{infolines}
+\usetheme{Boadilla}
+\usecolortheme{seahorse}
+\setbeamertemplate{navigation symbols}{}
+\title{Functions}
+\newcommand{\shorttitle}{64 Bit Intel Assembly Language}
+\newcommand{\shortauthor}{\copyright 2011 Ray Seyfarth}
+\author{Ray Seyfarth}
+\begin{document}
+
+
+\usefoottemplate{\vbox{
+\tinycolouredline{structure!55}%
+ {\color{white}{\textbf{\shorttitle}\hfill\textbf{\shortauthor}}}%
+}}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}
+    \frametitle{Functions}
+    \begin{itemize}
+        \item We will write C compatible function
+        \item C++ can also call C functions using ``{\tt extern "C" \{...\}}''
+        \item It is generally not sensible to write complete assembly programs
+        \begin{itemize}
+            \item About 10\% of your program uses 90\% of the time
+            \item The compiler does an excellent job of code generation
+            \item Writing about 10\% of your application in assembly might be
+                  worth doing if you can take advantage of instructions like
+                  SSE or AVX
+        \end{itemize}
+        \item We will write functions which can be called from C
+        \item We will also take advantage of C library functions
+        \begin{itemize}
+            \item {\tt malloc} to allocate memory
+            \item {\tt scanf} to read data
+            \item {\tt printf} to print data
+        \end{itemize}
+    \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Outline}
+\tableofcontents
+\end{frame}
+
+\section{The stack}
+
+\begin{frame}
+    \frametitle{The stack}
+    \begin{itemize}
+        \item The run-time stack is a region of memory which is used
+              for a variety of temporary storage needs
+        \item It starts with a high address of {\tt 0x7fffa6b79000} for my
+              {\tt bash} process
+        \item It can be used for temporary storage of partially computed
+              expressions
+        \item It is used for some of the parameters to functions
+        \item It is used for local variables in C/C++ functions
+        \item It is used to store the address to return to after completing
+              a function call
+        \item The {\tt push} instruction decrements the {\tt rsp} register and
+              stores the value being pushed at this address
+        \item The {\tt pop} instruction places the value at the top of the
+              stack into its operand and increments {\tt rsp}
+        \item With the x86-64 instructions you should push and pop 8 bytes
+              at a time
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Initial stack setup}
+    \begin{itemize}
+        \item The operating system starts a process by creating a stack
+              with possibly randomly selected starting addresses
+        \item Then it places a variety of data items into the stack.
+        \item Finally it transfer to {\tt \_start} (not really a call)
+        \item The parameters to {\tt \_start} are placed on the stack.
+        \item The first parameter (last pushed on the stack) in the number
+              of command line parameters
+        \item The second parameter is the address of the string (on the stack) 
+              which is the first command line parameter (program name)
+        \item These command line parameters continue and end with a 0 value
+              on the stack.
+        \item Above this point on the stack are addresses of the strings which
+              constitute the environment
+        \begin{itemize}
+            \item Strings like {\tt "USER=seyfarth"}
+            \item Or {\tt "PATH=/bin:/usr/bin:/usr/local/bin"} with
+                  multiple parts
+            \item All these variables were contained in the starting process
+            \item A child process inherits an environment
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\section{The call instruction}
+
+\begin{frame}[fragile]
+    \frametitle{The call instruction}
+    \begin{itemize}
+        \item After preparing any parameters you call a function this way
+    \end{itemize}
+\begin{verbatim}
+    call   my_function
+\end{verbatim}
+    \begin{itemize}
+        \item {\tt my\_function} should be an appropriate address in the code
+              segment
+        \item The function's return value will be in {\tt rax} or {\tt xmm0}
+        \item The effect of a function call is much like
+    \end{itemize}
+\begin{verbatim}
+    push   next_instruction
+    jmp    my_function
+next_instruction:
+\end{verbatim}
+\end{frame}
+
+\section{The return instruction}
+
+\begin{frame}[fragile]
+    \frametitle{The return instruction}
+    \begin{itemize}
+        \item The effect of the return instruction ({\tt ret}) is
+              to pop an address off the stack and branch to it
+        \item We could get much the same effect using
+    \end{itemize}
+\begin{verbatim}
+    pop   rdi
+    jmp   rdi
+\end{verbatim}
+\end{frame}
+
+\section{Function parameters}
+
+\begin{frame}
+    \frametitle{Function parameters}
+    \begin{itemize}
+        \item On 32 bit Linux all parameters were pushed onto the stack
+        \item On x86-64 there are 8 more registers, so some parameters
+              are passed in registers.
+        \item Linux and Mac OS/X pass integer and address parameters
+               1 through 6 in {\tt rdi}, {\tt rsi}, {\tt rdx}, {\tt rcx},
+               {\tt r8} and {\tt r9}
+        \item The remaining integer and address parameters are pushed onto
+              the stack
+        \item The first 6 floating point parameters are passed in registers
+              {\tt xmm0} - {\tt xmm5}
+        \item The remaining floating point parameters are passed on the stack
+        \item Windows uses registers {\tt rcx}, {\tt rdx}, {\tt r8} and
+              {\tt r9} for the first 4 integer and address parameters and
+              pushes the rest
+        \item Windows uses {\tt xmm0} - {\tt xmm3}
+        \item In all cases pushed parameters are pushed in reverse order
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Function parameters (2)}
+    \begin{itemize}
+        \item Functions like {\tt printf} having a variable number of
+              parameters must place the number of floating point
+              parameters in {\tt rax}
+        \item Both Linux and Windows require the maintenance of the stack on
+              16 byte boundaries during the main part of functions
+        \item The reason behind this requirement is to make it possible for
+              local variables (on the stack) to be on 16 byte boundaries,
+              a requirement for some SSE and AVX instructions
+        \item Conforming functions generally start with ``{\tt push rbp}''
+              re-establishes the 15 byte bounding temporarily botched by
+              the function call
+        \item Following that conforming functions subtract multiple of 16 from
+              {\tt rsp} to allocate stack space or push pairs of 8 byte
+              values
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Hello world, at last}
+\begin{verbatim}
+        section .data
+msg:    db      "Hello World!",0x0a,0
+
+        section .text
+        global  main
+        extern  printf
+main:
+        push    rbp
+        mov     rbp, rsp
+        lea     rdi, [msg]  ; parameter 1 for printf
+        xor     eax, eax    ; 0 floating point parameters
+        call    printf
+        xor     eax, eax    ; return 0
+        pop     rbp
+        ret
+\end{verbatim}
+\end{frame}
+
+\section{Stack frames}
+
+\begin{frame}[fragile]
+    \frametitle{Stack frames}
+    \begin{itemize}
+        \item Stack frames are used by the {\tt gdb} debugger to trace
+              backwards through the stack to inspect calls make in
+              a process
+        \item The set of stack frames is accessible using the {\tt rbp}
+              register which contains the previous value of {\tt rsp}
+        \item At the previous {\tt rsp} location is stored the old value
+              of {\tt rbp} for the previous function
+        \item Just above the previous {\tt rbp} is the return address
+        \item The {\tt rbp} addresses give a linked list of stack frames
+              which works great with the {\tt backtrace} or {\tt bt} command
+              in {\tt gdb}
+        \item Your functions should look like
+    \end{itemize}
+    \begin{verbatim}
+    push    rbp
+    mov     rbp, rsp
+    sub     rsp, multiple_of_16
+    ...
+    leave               ; undoes the first 3 instructions
+    ret
+    \end{verbatim}
+
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Symbolic names for local variables}
+    \begin{itemize}
+        \item Local variables in a function are at {\tt rsp} and above
+        \item Use the {\tt equ} pseudo-op to give names to their
+              offsets relative to {\tt rsp}
+    \end{itemize}
+\begin{verbatim}
+a   equ     0
+b   equ     8
+c   equ     16
+d   equ     24
+    push    rbp
+    mov     rbp, rsp
+    sub     rsp, 32
+    mov     [rsp+a], rdi ; stores the first parameter in a
+    mov     [rsp+b], rsi ; save the second parameter
+    mov     rdi, 16
+    call    malloc
+    mov     [rsp+d], rax ; save address returned by malloc
+    leave               
+    ret
+\end{verbatim}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Register preservation}
+    \begin{itemize}
+        \item For Linux a function must preserve registers {\tt rbx},
+              {\tt rbp}, and {\tt r12}-{\tt r15}
+        \item Try to dodge them, but if you need them place them in 
+              local variables on the stack first and restore before
+              you leave
+        \item It can be a relief to use these registers since they will
+              still be available to you after a function call
+        \item Windows functions must preserve registers {\tt rbx},
+              {\tt rbp}, {\tt rsi}, {\tt rdi} and {\tt r12}-{\tt r15}
+    \end{itemize}
+\end{frame}
+
+\section{Recursion}
+
+\begin{frame}
+    \frametitle{Recursion}
+    \begin{itemize}
+        \item A recursive function calls itself (perhaps indirectly)
+        \item Using proper stack frames can help in debugging, especially
+              with recursion
+        \item Recursive solutions involve breaking a big problem into
+              smaller problems, solving the smaller problems and
+              building a complete solution from the sub-solutions
+        \item If you break a problem up enough it generally becomes
+              obvious how to solve it
+        \item Perhaps you are defining a recursive sum of array elements.
+              When you get down to 0 array elements it is easy to solve.    
+        \item These easy cases are called ``base cases''
+        \item A recursive function begins by checking if it is being asked
+              to solve a base case
+        \item If so, then it produces an immediate solution
+        \item If not, then it applies recursion on sub-problems
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Recursive factorial function}
+    \small
+    \begin{verbatim}
+fact:                               ; recursive function
+n       equ     8
+        push    rbp
+        mov     rbp, rsp
+        sub     rsp, 16             ; make room for storing n
+        cmp     rdi, 1              ; compare argument with 1
+        jg      greater             ; if n <= 1, return 1
+        mov     eax, 1              ; set return value to 1
+        leave
+        ret
+greater:
+        mov     [rsp+n], rdi        ; save n
+        dec     rdi                 ; call fact with n-1
+        call    fact
+        mov     rdi, [rsp+n]        ; restore original n
+        imul    rax, rdi            ; multiply fact(n-1)*n
+        leave
+        ret
+    \end{verbatim}
+\end{frame}
+
+\end{document}

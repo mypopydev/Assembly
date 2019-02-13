@@ -1,0 +1,235 @@
+\documentclass{beamer}
+
+\usepackage{geometry}
+\usepackage{graphicx}
+%\usepackage{wrapfig}
+\usepackage{amsmath}
+
+%\useoutertheme{infolines}
+\usetheme{Boadilla}
+\usecolortheme{seahorse}
+\setbeamertemplate{navigation symbols}{}
+\title{Structs}
+\newcommand{\shorttitle}{64 Bit Intel Assembly Language}
+\newcommand{\shortauthor}{\copyright 2011 Ray Seyfarth}
+\author{Ray Seyfarth}
+\begin{document}
+
+
+\usefoottemplate{\vbox{
+\tinycolouredline{structure!55}%
+ {\color{white}{\textbf{\shorttitle}\hfill\textbf{\shortauthor}}}%
+}}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Structs in C}
+    \begin{itemize}
+        \item A struct is a compound object
+    \end{itemize}
+\begin{verbatim}
+    struct Customer {
+        int  id;
+        char name[64];
+        char address[64];
+        int  balance;
+    };
+\end{verbatim}
+    \begin{itemize}
+        \item We can allocate a {\tt Customer} if we know the size
+    \end{itemize}
+\begin{verbatim}
+    mov     rdi, 136        ; size of a Customer
+    call    malloc
+    mov     [c], rax        ; save the address
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Filling in a C struct}
+    \begin{itemize}
+        \item We can fill in the parts given their offsets
+    \end{itemize}
+\begin{verbatim}
+        mov     [rax], dword 7  ; set the id
+        lea     rdi, [rax+4]    ; name field
+        lea     rsi, [name]     ; name to copy to struct
+        call    strcpy
+        mov     rax, [c]
+        lea     rdi, [rax+68]   ; address field
+        lea     rsi, [address]  ; address to copy
+        call    strcpy
+        mov     rax, [c]
+        mov     edx, [balance]
+        mov     [rax+132], edx
+\end{verbatim}
+\end{frame}
+
+%\begin{frame}
+%\frametitle{Outline}
+%\tableofcontents
+%\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Assembly struct}
+    \begin{itemize}
+        \item Using the {\tt yasm} {\tt struc} pseudo-op we can
+              define a Customer
+    \end{itemize}
+\begin{verbatim}
+        struc   Customer
+id      resd    1
+name    resb    64
+address resb    64
+balance resd    1
+        endstruc
+\end{verbatim}
+    \begin{itemize}
+        \item {\tt id}, {\tt name}, {\tt address} and {\tt balance} are
+              globals
+        \item You could not have {\tt id} in 2 structs
+        \item It's almost the same as doing 4 equates
+        \item The size is {\tt Customer\_size}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Assembly struct}
+    \begin{itemize}
+        \item One alternative is to prefix field names with dots
+    \end{itemize}
+\begin{verbatim}
+         struc   Customer
+.id      resd    1
+.name    resb    64
+.address resb    64
+.balance resd    1
+         endstruc
+\end{verbatim}
+    \begin{itemize}
+        \item Then you would have to use {\tt Customer.id}
+        \item Another alternative is to use an abbreviated prefix
+    \end{itemize}
+\begin{verbatim}
+        struc   Customer
+c_id      resd    1
+c_name    resb    64
+c_address resb    64
+c_balance resd    1
+        endstruc
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Program to allocate and fill a struct - data segment}
+\begin{verbatim}
+        segment .data
+name    db      "Calvin", 0
+address db      "12 Mockingbird Lane",0
+balance dd      12500
+        struc   Customer
+c_id      resd    1
+c_name    resb    64
+c_address resb    64
+c_balance resd    1
+        endstruc
+c       dq      0       ; to hold a Customer pointer
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Program to allocate and fill a struct - part of text segment}
+\begin{verbatim}
+        mov     rdi, Customer_size
+        call    malloc
+        mov     [c], rax    ; save the pointer
+        mov     [rax+c_id], dword 7
+        lea     rdi, [rax+c_name]
+        lea     rsi, [name]
+        call    strcpy
+        mov     rax, [c]    ; restore the pointer
+        lea     rdi, [rax+c_address]
+        lea     rsi, [address]
+        call    strcpy
+        mov     rax, [c]    ; restore the pointer
+        mov     edx, [balance]
+        mov     [rax+c_balance], edx
+        xor     eax, eax
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Alignment problems}
+    \begin{itemize}
+        \item Suppose you increase the size of the {\tt c\_address} array to 65
+        \item C would make the offset of {\tt balance} be 136
+        \item {\tt yasm} would define the offset as 133
+        \item The goal is to be C compatible
+        \item Also C would have {\tt sizeof(Customer)} as 140
+        \item {\tt Customer\_size} would be 137
+        \item C aligns each field and makes the size of a struct appropriate
+              for aligning each data item properly if we allocate an array of structs
+        \item We need to use {\tt align} in the struct
+    \end{itemize}
+\begin{verbatim}
+        struc   Customer
+c_id      resd    1
+c_name    resb    64
+c_address resb    65
+          align   4
+c_balance resd    1
+        endstruc
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Allocating a slightly more complex array of customers}
+\begin{verbatim}
+          segment .data
+          struc   Customer
+c_id      resd    1     ; 4 bytes
+c_name    resb    65    ; 69 bytes
+c_address resb    65    ; 134 bytes
+          align   4     ; aligns to 136
+c_balance resd    1     ; 140 bytes
+c_rank    resb    1     ; 141 bytes
+          align   4     ; aligns to 144
+          endstruc
+customers dq      0
+          segment .text
+          mov   edi, 100 ; for 100 structs
+          mul   edi, Customer_size 
+          call  malloc
+          mov   [customers], rax
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Printing an array of customers}
+\small
+\begin{verbatim}
+          segment .data
+format    db    "%s %s %d",0x0a,0
+          segment .text
+          push  r15
+          push  r14
+          mov   r15, 100        ; counter saved through calls
+          mov   r14, [customers]; pointer saved through calls
+more      lea   edi, [format]
+          lea   esi, [r14+c_name]
+          lea   rdx, [r14+c_address]
+          mov   rcx. [r14+c_balance]
+          call  printf
+          add   r14, Customer_size
+          sub   r15, 1
+          jnz   more
+          pop   r14
+          pop   r15
+          ret
+\end{verbatim}
+\end{frame}
+
+\end{document}

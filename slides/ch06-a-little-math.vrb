@@ -1,0 +1,19 @@
+\frametitle {Conditional move examples}
+    \begin{itemize}
+        \item Here is some code to compute absolute value
+    \end{itemize}
+\begin{verbatim}
+    mov     rbx, rax    ; save original value
+    neg     rax         ; negate rax
+    cmovl   rax, rbx    ; replace rax if negative
+\end{verbatim}
+    \begin{itemize}
+        \item The code below loads a number from memory, subtracts 100 and
+              replaces the difference with 0 if the difference is negative
+    \end{itemize}
+\begin{verbatim}
+    mov     rbx, 0      ; set rbx to 0
+    mov     rax, [x]    ; get x from memory
+    add     rax, 100    ; subtract 100 from x
+    cmovl   rax, rbx    ; set rax to 0 if rax was negative
+\end{verbatim}

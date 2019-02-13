@@ -1,0 +1,7 @@
+\beamer@endinputifotherversion {3.10pt}
+\beamer@sectionintoc {1}{Binary numbers}{3}{0}{1}
+\beamer@sectionintoc {2}{Hexadecimal numbers}{6}{0}{2}
+\beamer@sectionintoc {3}{Integers}{9}{0}{3}
+\beamer@sectionintoc {4}{Floating point numbers}{15}{0}{4}
+\beamer@sectionintoc {5}{Converting decimal numbers to floats}{21}{0}{5}
+\beamer@sectionintoc {6}{Floating point mathematics}{24}{0}{6}

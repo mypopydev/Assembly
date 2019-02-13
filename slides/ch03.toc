@@ -1,0 +1,6 @@
+\beamer@endinputifotherversion {3.10pt}
+\beamer@sectionintoc {1}{Memory mapping}{3}{0}{1}
+\beamer@sectionintoc {2}{Process memory model in Linux}{7}{0}{2}
+\beamer@sectionintoc {3}{Memory example}{11}{0}{3}
+\beamer@sectionintoc {4}{Examining memory with {\tt gdb}}{16}{0}{4}
+\beamer@sectionintoc {5}{Examining memory with {\tt ebe}}{17}{0}{5}

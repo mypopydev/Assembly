@@ -1,0 +1,527 @@
+\documentclass{beamer}
+
+\usepackage{geometry}
+\usepackage{graphicx}
+%\usepackage{wrapfig}
+\usepackage{amsmath}
+
+%\useoutertheme{infolines}
+\usetheme{Boadilla}
+\usecolortheme{seahorse}
+\setbeamertemplate{navigation symbols}{}
+\title{Branching and Looping}
+\newcommand{\shorttitle}{64 Bit Intel Assembly Language}
+\newcommand{\shortauthor}{\copyright 2011 Ray Seyfarth}
+\author{Ray Seyfarth}
+\begin{document}
+
+
+\usefoottemplate{\vbox{
+\tinycolouredline{structure!55}%
+ {\color{white}{\textbf{\shorttitle}\hfill\textbf{\shortauthor}}}%
+}}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}
+    \frametitle{Branching and looping}
+    \begin{itemize}
+        \item So far we have only written ``straight line'' code
+        \item Conditional moves helped spice things up
+        \item In addition conditional moves kept the pipeline full
+        \item But conditional moves are not always faster than branching
+        \item But we need loops to process each bit in a register
+        \item Repeated code can be faster, but there is a limit
+        \item In the next chapter we will work with arrays
+        \item Here we will need to process differing amounts of data
+        \item Repeated code is too inflexible
+        \item We need loops
+        \item To handle code structures like if/else we need both
+              conditional and unconditional branch statements
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Outline}
+\tableofcontents
+\end{frame}
+
+\section{Unconditional jump}
+
+\begin{frame}[fragile]
+    \frametitle{Unconditional jump}
+    \begin{itemize}
+        \item An unconditional jump is equivalent to a {\tt goto}
+        \item But jumps are necessary in assembly, while high level
+              languages could exist without {\tt goto}
+        \item The unconditional jump looks like\\
+    {\tt jmp     label}
+        \item The {\tt label} can be any label in the program's text segment
+        \item Humans think of parts of the text segment as functions
+        \item The computer will let you jump anywhere
+        \item You can try to jump to a label in the data segment, which
+              hopefully will fail
+        \item The assembler will generate an instruction register ({\tt rip})
+              relative location to jump
+        \item The simplest form uses an 8 bit immediate: -128 to +127 bytes
+        \item The next version is 32 bits: plus or minus 2 GB
+        \item The short version takes up 2 bytes; the longer version 5 bytes
+        \item The assembler figures this out for you
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Unconditional jumps can vary}
+    \begin{itemize}
+        \item An unconditional jump can jump to a location specified
+              by a register's content or a memory location
+        \item You could use a conditional move to hold either of 2 locations
+              in a register and jump to the proper location
+        \item It is simpler to just use a conditional jump
+        \item However you can construct an efficient switch statement
+              by expanding this idea
+        \item You need an array of addresses and an index for the array
+              to select which address to use for the jump
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Unconditional jump used as a switch}
+\small
+\begin{verbatim}
+        segment .data
+switch: dq      main.case0
+        dq      main.case1
+        dq      main.case2
+i:      dq      2
+        segment .text
+        global  main                ; tell linker about main
+main:   mov     rax, [i]            ; move i to rax
+        jmp     [switch+rax*8]      ; switch ( i )
+.case0:
+        mov     rbx, 100            ; go here if i == 0
+        jmp     .end
+.case1:
+        mov     rbx, 101            ; go here if i == 1
+        jmp     .end     
+.case2:
+        mov     rbx, 102            ; go here if i == 2
+.end:   xor     eax, eax
+        ret
+\end{verbatim}
+\end{frame}
+
+\section{Conditional jump}
+
+\begin{frame}[fragile]
+    \frametitle{Conditional jump}
+    \begin{itemize}
+        \item First you need to execute an instruction which sets some flags
+        \item Then you can use a conditional jump
+        \item The general pattern is \\
+    {\tt jCC    label}
+        \item The {\tt CC} means a condition code
+    \end{itemize}
+\begin{center}
+  \begin{tabular}{|l|l|l|l|}
+    \hline
+    instruction & meaning & aliases & flags \\
+    \hline
+    jz   & jump if zero & je & ZF=1 \\
+    \hline
+    jnz  & jump if not zero & jne & ZF=0 \\
+    \hline
+    jg   & jump if $>$ zero & jnle ja & ZF=0, SF=0 \\
+    \hline
+    jge  & jump if $\ge$ zero & jnl & SF=0 \\
+    \hline
+    jl   & jump if $<$ zero & jnge js & SF=1 \\
+    \hline
+    jle  & jump if $\le$ zero & jng & ZF=1 or SF=1 \\
+    \hline
+    jc   & jump if carry & jb jnae & CF=1 \\
+    \hline
+    jnc  & jump if not carry & jae jnb & CF=0 \\
+    \hline
+  \end{tabular}
+\end{center}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Simple if statement}
+\begin{verbatim}
+    if ( a < b ) {
+        temp = a;
+        a = b;
+        b = temp;
+    }
+\end{verbatim}
+
+\begin{verbatim}
+        mov   rax, [a]
+        mov   rbx, [b]
+        cmp   rax, rbx
+        jge   in_order
+        mov   [temp], rax
+        mov   [a], rbx
+        mov   [b], rax
+    in_order:
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{If statement with an else clause}
+\begin{verbatim}
+    if ( a < b ) {
+        max = b;
+    } else {
+        max = a;
+    }
+\end{verbatim}
+
+\begin{verbatim}
+        mov   rax, [a]
+        mov   rbx, [b]
+        cmp   rax, rbx
+        jnl   else
+        mov   [max], rbx
+        jmp   endif
+else:   mov   [max], rax
+endif:
+\end{verbatim}
+\end{frame}
+
+\section{Looping with conditional jumps}
+
+\begin{frame}[fragile]
+    \frametitle{Looping with conditional jumps}
+    \begin{itemize}
+        \item You could construct any form of loop using conditional jumps
+        \item We will model our code after C's loops
+        \item {\tt while}, {\tt do ... while} and {\tt for}
+        \item We will also consider {\tt break} and {\tt continue}
+        \item {\tt break} and {\tt continue} can be avoided in C, though
+              sometimes the result is less clear
+        \item The same consideration applies for assembly loops as well
+    \end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Counting 1 bits in a quad-word}
+\begin{verbatim}
+    sum = 0;
+    i = 0;
+    while ( i < 64 ) {
+        sum += data & 1;
+        data = data >> 1;
+        i++;
+    }
+\end{verbatim}
+    \begin{itemize}
+        \item There are much faster ways to do this
+        \item But this is easy to understand and convert to assembly
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Counting 1 bits in a quad-word in assembly}
+\small
+\begin{verbatim}
+        segment .text
+        global  main
+main:   mov     rax, [data] ; rax holds the data
+        xor     ebx, ebx    ; clear since setc will fill in bl
+        xor     ecx, ecx    ; i = 0;
+        xor     edx, edx    ; sum = 0;
+while:  cmp     rcx, 64     ; while ( i < 64 ) {
+        jnl     end_while   ; requires testing on opposite
+        bt      rax, 0      ; data & 1
+        setc    bl          ; move result of test to bl
+        add     edx, ebx    ; sum += data & 1;
+        shr     rax, 1      ; data = data >> 1;
+        inc     rcx         ; i++;
+        jmp     while       ; end of the while loop
+end_while:
+        mov     [sum], rdx  ; save result in memory
+        xor     eax, eax    ; return 0 from main
+        ret
+\end{verbatim}
+\end{frame}
+\begin{frame}[fragile]
+    \frametitle{Code generated by {\tt gcc -O3 -S countbit.s}}
+\begin{verbatim}
+        movq    data(%rip), %rax
+        movl    $64, %ecx
+        xorl    %edx, %edx
+.L2:
+        movq    %rax, %rsi
+        sarq    %rax
+        andl    $1, %esi
+        addq    %rsi, %rdx
+        subl    $1, %ecx
+        jne     .L2
+\end{verbatim}
+    \begin{itemize}
+        \item AT\&T syntax: operands are reversed and names are more explicit
+        \item The compiler counted down from 64
+        \item Converted the loop to test at the bottom
+        \item Loop has 2 fewer instructions
+        \item Is it faster to use {\tt movq} and {\tt andl}?
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Learning from the compiler}
+    \begin{itemize}
+        \item The compiler writers know the instruction set very well
+        \item Most likely {\tt movq} and {\tt andl} is faster
+        \item Testing would tell if the other method is superior
+        \item I also tried the compiler option ``{\tt -funroll-all-loops}''
+        \item The compiler added up values for 8 bits in 1 loop iteration
+        \item 8 bits in a 24 instruction loop vs 1 bit in a six instruction
+              loop
+        \item This makes it twice as fast, but the instructions use many
+              different registers allowing parallel execution in 1 core
+        \item Loop unrolling can help a lot with 16 registers
+        \item Examining the generated code should mean than you do no worse
+        \item Clever reorganization can beat the compiler
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Do-while loops}
+    \begin{itemize}
+        \item Strict translation of a while loop uses 2 jumps
+        \item It save a jump to the top if you use a {\tt do-while} loop
+    \end{itemize}
+\begin{verbatim}
+    do {
+        statements;
+    } while ( condition );
+\end{verbatim}
+    \begin{itemize}
+        \item A {\tt do-while} loop always executes the loop body at least
+              once
+        \item You can always place an {\tt if} statement around a 
+              {\tt do-while} to make it behave like a {\tt while} loop
+    \end{itemize}
+
+\begin{verbatim}
+    if ( condition ) {
+        do {
+            statements;
+        } while ( condition );
+    }
+\end{verbatim}
+    \begin{itemize}
+        \item Don't do this in C - let the compiler do it for you
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Ugly C code to search through an array}
+\begin{verbatim}
+    i = 0;
+    c = data[i];
+    if ( c != 0 ) do {
+        if ( c == x ) break;
+        i++;
+        c = data[i];
+    } while ( c != 0 );
+    n = c == 0 ? -1 : i;
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Assembly code to search through an array}
+    \begin{verbatim}
+        mov     bl, [x]        ; value being sought
+        xor     ecx, ecx       ; i = 0;
+        mov     al, [data+rcx] ; c = data[i]
+        cmp     al, 0          ; if ( c != 0 ) {
+        jz      end_while      ; skip loop for empty string
+while:
+        cmp     al, bl         ; if ( c == x ) break; 
+        je      found
+        inc     rcx            ; i++;
+        mov     al, [data+rcx] ; c = data[i];
+        cmp     al, 0          ; while ( c != 0 );
+        jnz     while
+end_while:
+        mov     rcx, -1        ; If we get here, we failed
+found:  mov     [n], rcx       ; Assign either -1 or the 
+                               ; index where x was found
+    \end{verbatim}
+
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Counting loops}
+\begin{verbatim}
+    for ( i = 0; i < n; i++ ) {
+        c[i] = a[i] + b[i];
+    }
+\end{verbatim}
+\begin{verbatim}
+        mov     rdx, [n]       ; use rdx for n
+        xor     ecx, ecx       ; i (rdx) = 0
+for:    cmp     rcx, rdx       ; i < n
+        je      end_for        ; get out if equal
+        mov     rax, [a+rcx*8] ; get a[i]
+        add     rax, [b+rcx*8] ; a[i] + b[i]
+        mov     [c+rcx*8], rax ; c[i] = a[i] + b[i];
+        inc     rcx            ; i++
+        jmp     for            ; too bad, loop has 2 jumps
+end_for:
+\end{verbatim}
+    \begin{itemize}
+        \item We could use a test before the loop
+        \item We could do loop unrolling
+    \end{itemize}
+\end{frame}
+
+\section{Loop instructions}
+
+\begin{frame}[fragile]
+    \frametitle{Loop instructions}
+    \begin{itemize}
+        \item The CPU has instructions like {\tt loop} and {\tt loopne} which
+              designed for loops
+        \item They decrement {\tt rcx} and do the branch if {\tt rcx} is not 0
+        \item It is faster to use {\tt dec} and {\tt jnz} instead
+        \item The label must be within -128 to +127 bytes of {\tt rip}
+        \item Probably pointless
+    \end{itemize}
+\begin{verbatim}
+        mov    ecx, [n]
+        sub    ecx, 1
+more:   cmp    [data+rcx],al
+        loopne more
+        mov    [loc], ecx
+\end{verbatim}
+\end{frame}
+
+\section{Repeat string (array) instructions}
+
+\begin{frame}[fragile]
+    \frametitle{Repeat string (array) instructions}
+    \begin{itemize}
+        \item The repeat instruction ({\tt rep}) works in conjunction
+              with string (array) instructions
+        \item You first set {\tt rcx} to be the number of repetitions
+        \item You set {\tt rsi} to the address of source data
+        \item And set {\tt rdi} to be the address of destination data
+        \item Then you use a command like
+    \end{itemize}
+\begin{verbatim}
+    rep     movsb
+\end{verbatim}
+    \begin{itemize}
+        \item The previous command would copy an array of bytes
+        \item Some string instructions include tests for early termination
+        \item The string instructions can also be used without {\tt rep}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Store instruction}
+    \begin{itemize}
+        \item The {\tt stosb} instruction stores the byte in {\tt al}
+              at the address specified in {\tt rdi} and increments {\tt rdi}
+        \item If the direction flag is set it decrements {\tt rdi}
+        \item There are also {\tt stosw}, {\tt stosd} and {\tt stosq}
+              to operate 2, 4 and 8 byte quantities
+    \end{itemize}
+\begin{verbatim}
+    mov     eax, 1
+    mov     ecx, 1000000
+    lea     rdi, [destination]
+    rep     stosd      ; place 1000000 1's in destination
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Store instruction}
+    \begin{itemize}
+        \item There are a collection of load string instructions
+              which copy data from the address pointed at by {\tt rsi}
+              and increment (or decrement) {\tt rsi}
+        \item Using {\tt rep lodsb} seems pointless
+        \item The code below uses {\tt lodsb} and optionally {\tt stosb}
+              to copy none carriage return characters
+    \end{itemize}
+\begin{verbatim}
+        lea     rsi, [source]
+        lea     rdi, [destination]
+        mov     ecx, 1000000   ; number of iterations
+more:   lodsb                  ; get the next byte in al
+        cmp     al, 13         ; if al is not 13 store al
+        je      skip
+        stosb                  ; store al in destination
+skip:   sub     ecx, 1         ; count down
+        jnz     more
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Scan instruction}
+    \begin{itemize}
+        \item There are a collection of scan string instructions
+              which scan data from the address pointed at by {\tt rsi}
+              and increment (or decrement) {\tt rsi}
+        \item They compare data against {\tt al}, {\tt ax}, ...
+        \item Below is a version of the C {\tt strlen} function
+    \end{itemize}
+\begin{verbatim}
+        segment .text
+        global  strlen
+strlen: cld                 ; prepare to increment rdi
+        mov     rcx, -1     ; maximum number of iterations
+        xor     al, al      ; will scan for 0
+        repne   scasb       ; repeatedly scan for 0
+        mov     rax, -2     ; start at -1, end 1 past the end
+        sub     rax, rcx   
+        ret
+\end{verbatim}
+\end{frame}
+
+
+\begin{frame}[fragile]
+    \frametitle{Compare instruction}
+    \begin{itemize}
+        \item The compare string instructions compare the data
+              pointed at by {\tt rdi} and {\tt rsi}
+        \item The code below implements the C {\tt memcmp} function
+    \end{itemize}
+\begin{verbatim}
+        segment .text
+        global  memcmp
+memcmp: mov     rcx, rdx
+        repe    cmpsb      ; compare until end or difference
+        cmp     rcx, 0
+        jz      equal      ; reached the end
+        movzx   eax, byte [rdi-1]
+        movsx   ecx, byte [rsi-1]
+        sub     eax, ecx
+        ret
+equal:  xor     eax, eax
+        ret
+\end{verbatim}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Setting and clearing the direction flag}
+    \begin{itemize}
+        \item The string operations increment their addresses if the
+              direction flag is 0
+        \item They decrement their address is the direction flag is 1
+        \item Use {\tt cld} to prepare for increasing addresses
+        \item Use {\tt std} to prepare for decreasing addresses
+        \item Functions are expected to leave the direction flag set to 0
+    \end{itemize}
+\end{frame}
+
+\end{document}

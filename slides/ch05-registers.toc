@@ -1,0 +1,6 @@
+\beamer@endinputifotherversion {3.10pt}
+\beamer@sectionintoc {1}{Register basics}{3}{0}{1}
+\beamer@sectionintoc {2}{Moving a constant into a register}{9}{0}{2}
+\beamer@sectionintoc {3}{Moving a value from memory into a register}{10}{0}{3}
+\beamer@sectionintoc {4}{Moving values from a register into memory}{14}{0}{4}
+\beamer@sectionintoc {5}{Moving data from one register to another}{15}{0}{5}

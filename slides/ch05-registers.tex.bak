@@ -1,0 +1,272 @@
+\documentclass{beamer}
+
+\usepackage{geometry}
+\usepackage{graphicx}
+%\usepackage{wrapfig}
+\usepackage{amsmath}
+
+%\useoutertheme{infolines}
+\usetheme{Boadilla}
+\usecolortheme{seahorse}
+\setbeamertemplate{navigation symbols}{}
+\title{Registers}
+\newcommand{\shorttitle}{64 Bit Intel Assembly Language}
+\newcommand{\shortauthor}{\copyright 2011 Ray Seyfarth}
+\author{Ray Seyfarth}
+\begin{document}
+
+
+\usefoottemplate{\vbox{
+\tinycolouredline{structure!55}%
+ {\color{white}{\textbf{\shorttitle}\hfill\textbf{\shortauthor}}}%
+}}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+\begin{frame}
+\frametitle{Outline}
+\tableofcontents
+\end{frame}
+
+\section{Register basics}
+
+
+\begin{frame}
+    \frametitle{Register basics}
+    \begin{itemize}
+        \item Computer main memory has a latency of about 80 nanoseconds
+        \item A 3.3 GHz CPU uses approximately 0.3 nsecs per cycle
+        \item Memory latency is about 240 cycles
+        \item The Core i7 has 3 levels of cache with different latencies
+        \begin{itemize}
+            \item Level 3 about 48 nsec latency or about 150 cycles
+            \item Level 2 about 10 nsec latency or about 39 cycles
+            \item Level 1 about 4 nsec latency or about 12 cycles
+        \end{itemize}
+        \item There is a need for even faster memory
+        \item This ultra-fast ``memory'' is the CPU's registers
+        \item Some register-register instructions complete in 1 cycle
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{x86-64 registers}
+    \begin{itemize}
+        \item CPUs running in x86-64 mode have 16 general purpose registers
+        \item There are also 16 floating point registers (XMM0-XMM15)
+        \item There is also a floating point register stack which we ignore
+        \item The general purpose registers hold 64 bits
+        \item The floating point registers can be either 128 or 256 bits
+        \begin{itemize}
+            \item The CPU can use them to do 1 32 bit or 1 64 bit
+                  floating point operation in an instruction
+            \item The CPU can also use these to do packed operations on
+                  multiple integer or floating point values in an instruction
+            \item ``Single Instruction Multiple Data'' - SIMD
+        \end{itemize}
+        \item The CPU has a 64 bit instruction pointer register - {\tt rip}
+        \item There is a 64 bit flags register, {\tt rflags}, holding status values
+              like whether the last comparison was positive, zero or negative
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{General purpose registers}
+    \begin{itemize}
+        \item These registers evolved from 16 bit CPUs to 32 bit mode 
+              and finally 64 bit mode
+        \item Each advance has maintained compatibility with the old instructions
+        \item The old register names still work
+        \item The old collection was 8 registers which were not entirely
+              general purpose
+        \item The 64 bit collection added 8 completely general purpose
+              64 bit registers named {\tt r8} - {\tt r15}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{The 64 bit registers evolved from the original 8}
+    \begin{itemize}
+        \item Software uses the ``r'' names for 64 bit use, the ``e'' names for
+              32 bit use and the original names for 16 bit use
+        \item {\tt rax} - general purpose, accumulator
+        \begin{itemize}
+            \item {\tt rax} uses all 64 bits
+            \item {\tt eax} uses the low 32 bits
+            \item {\tt ax} uses the low 16 bits
+        \end{itemize}
+        \item {\tt rbx}, {\tt ebx}, {\tt bx} - general purpose
+        \item {\tt rcx}, {\tt ecx}, {\tt cx} - general purpose, count register
+        \item {\tt rdx}, {\tt edx}, {\tt dx} - general purpose
+        \item {\tt rdi}, {\tt edi}, {\tt di} - general purpose, destination index
+        \item {\tt rsi}, {\tt esi}, {\tt si} - general purpose, source index
+        \item {\tt rbp}, {\tt ebp}, {\tt bp} - general purpose, stack frame base pointer
+        \item {\tt rsp}, {\tt esp}, {\tt sp} - stack pointer, {\tt rsp} is used to push and pop
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{The original 8 registers as bytes}
+    \begin{itemize}
+        \item Kept from the 16 bit mode
+        \begin{itemize}
+            \item {\tt al} is the low byte of {\tt ax}, {\tt ah} is the high byte
+            \item {\tt bx} can be used as {\tt bl} and {\tt bh}
+            \item {\tt cx} can be used as {\tt cl} and {\tt ch}
+            \item {\tt dx} can be used as {\tt dl} and {\tt dh}
+        \end{itemize}
+        \item New to x86-64
+        \begin{itemize}
+            \item {\tt dil} for low byte of {\tt rdi}
+            \item {\tt sil} for low byte of {\tt rsi}
+            \item {\tt bpl} for low byte of {\tt rbp} (probably useless)
+            \item {\tt spl} for low byte of {\tt rsp} (probably useless)
+        \end{itemize}
+        \item There is no special way to access any ``higher'' bytes of registers
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{The 8 new general purpose registers as smaller registers}
+    \begin{itemize}
+        \item Here the naming convention changes
+        \item Appending ``d'' to a register accesses its low double word - {\tt r8d}
+        \item Appending ``w'' to a register accesses its low word - {\tt r12w}
+        \item Appending ``b'' to a register accesses its low byte - {\tt r15b}
+    \end{itemize}
+\end{frame}
+
+\section{Moving a constant into a register}
+\begin{frame}[fragile]
+    \frametitle{Moving a constant into a register}
+    \begin{itemize}
+        \item Moving is fundamental
+        \item {\tt yasm} uses the mnemonic {\tt mov} for all sorts of moves
+        \item The code from {\tt gcc} uses mnemonics like {\tt movq}
+        \item Most instructions use 1, 2 or 4 byte immediate fields
+        \item {\tt mov} can use an 8 byte immediate value
+    \end{itemize}
+    \begin{verbatim}
+    mov rax, 0x0123456789abcdef ; can move 8 byte immediates
+    mov rax, 0
+    mov eax, 0                  ; the upper half is set to 0
+    mov r8w, 16                 ; affects only low word
+    \end{verbatim}
+    \begin{itemize}
+        \item Time to try some {\tt mov}s using {\tt gdb}
+    \end{itemize}
+\end{frame}
+
+\section{Moving a value from memory into a register}
+
+\begin{frame}[fragile]
+    \frametitle{Moving a value from memory into a register}
+    \begin{verbatim}
+        segment .data
+a       dq      175
+b       dq      4097
+c       db      1, 2, 3, 4
+d       dd      0xffffffff
+        segment .code
+        mov     rax, a
+        mov     rbx, [a]
+        mov     rcx, [c]
+        mov     edx, [c]
+    \end{verbatim}
+    \begin{itemize}
+    \item Using simply {\tt a} places the address of {\tt a} into {\tt rax}
+    \item Using {\tt [a]} places the value of {\tt a} into {\tt rbx}
+    \item {\tt mov  rcx, [c]} makes {\tt rcx} = {0x01020304ffffffff}
+    \item {\tt mov  edx, [c]} makes {\tt rdx} = {0x01020304}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Moving a value from memory into a register (2)}
+    \begin{itemize}
+        \item The from memory {\tt mov} instruction has a 32 bit immediate field
+        \item This is where the address is placed
+        \item This means using addresses greater than 4 GB requires getting the
+              address into a register rather than using the immediate field
+        \item There is a special 64 bit form, but generally you will not have a
+              64 bit immediate address
+        \item The register name defines the number of bytes moved
+        \item {\tt mov  rax, a} is really a ``move constant'' instruction
+        \item {\tt mov  rax, [a]} is a ``move from memory'' instruction
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{A program to add 2 numbers from memory}
+\begin{verbatim}
+        segment .data
+a       dq      175
+b       dq      4097
+        segment .text
+        global  main
+main:
+        mov     rax, [a]    ; mov a into rax
+        add     rax, [b]    ; add b to rax
+        xor     eax, eax
+        ret
+\end{verbatim}
+\begin{itemize}
+    \item Time to try this with {\tt gdb}
+    \item You will see that {\tt gdb} thinks variables are double word integers
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Move with sign extend or zero extend}
+\begin{itemize}
+    \item If you move a double word into a double word register, the
+          upper half is zeroed out
+    \item If you move a 32 bit immediate into a 64 bit register it is
+          sign extended
+    \item Sometimes you might wish to load a smaller value from memory
+          and fill the rest of the register with zeroes
+    \item Or you may wish to sign extend a small value from memory
+    \item For {\tt movsx} and {\tt movzx} you need a size qualifier
+          for the memory operand
+\end{itemize}
+\begin{verbatim}
+        movsx  rax, byte [data]     ; move byte, sign extend
+        movzx  rbx, word [sum]      ; move word, zero extend
+        movsx  rcx, dword [count]   ; move dword, sign extend
+\end{verbatim}
+\end{frame}
+
+\section{Moving values from a register into memory}
+
+\begin{frame}[fragile]
+    \frametitle{Moving values from a register into memory}
+    \begin{itemize}
+        \item Simply use the memory reference as the first operand
+    \end{itemize}
+    \begin{verbatim}
+        mov   [a], rax      ; move a quad word to a
+        mov   [b], ebx      ; move a double word to b
+        mov   [c], r8w      ; move a word to c
+        mov   [d], r15b     ; move a byte to d
+    \end{verbatim}
+
+\end{frame}
+
+\section{Moving data from one register to another}
+
+\begin{frame}[fragile]
+    \frametitle{Moving data from one register to another}
+    \begin{itemize}
+        \item Use 2 register operands
+    \end{itemize}
+    \begin{verbatim}
+        mov     rax, rbx    ; move rbx to rax
+        mov     eax, ecx    ; move ecx to eax, zero filled
+        mov     cl, al      ; move al to cl, leave rest of 
+                            ; unchanged
+    \end{verbatim}
+
+\end{frame}
+
+\end{document}

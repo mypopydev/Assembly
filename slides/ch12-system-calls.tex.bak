@@ -1,0 +1,276 @@
+\documentclass{beamer}
+
+\usepackage{geometry}
+\usepackage{graphicx}
+%\usepackage{wrapfig}
+\usepackage{amsmath}
+
+%\useoutertheme{infolines}
+\usetheme{Boadilla}
+\usecolortheme{seahorse}
+\setbeamertemplate{navigation symbols}{}
+\title{System Calls}
+\newcommand{\shorttitle}{64 Bit Intel Assembly Language}
+\newcommand{\shortauthor}{\copyright 2011 Ray Seyfarth}
+\author{Ray Seyfarth}
+\begin{document}
+
+
+\usefoottemplate{\vbox{
+\tinycolouredline{structure!55}%
+ {\color{white}{\textbf{\shorttitle}\hfill\textbf{\shortauthor}}}%
+}}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}
+    \frametitle{System calls}
+    \begin{itemize}
+        \item A system call is a special function call which changes the CPU's
+              privilege level to enable more capabilities
+        \item A user process cannot do privileged instructions
+        \begin{itemize}
+            \item No in or out instructions
+            \item No changing of CPU mapping registers
+        \end{itemize}
+        \item Instead a user process makes a system call
+        \item The system call is a part of the kernel of the operating system
+        \item It verifies that the user should be allowed to do the requested action
+              and then does the action
+    \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Outline}
+\tableofcontents
+\end{frame}
+
+\section{32 bit system calls}
+
+\begin{frame}[fragile]
+    \frametitle{32 bit Linux system calls}
+    \begin{itemize}
+        \item Each system call is identified by an integer defined in
+              ``{\tt  /usr/include/asm/unistd\_32.h}''
+        \item The system call number is placed in {\tt eax}
+        \item Parameters are placed in registers {\tt ebx}, {\tt ecx},
+              {\tt edx}, {\tt esi}, {\tt edi}, and {\tt ebp}
+        \item Process uses the software interrupt number {\tt 0x80} to
+              make the system call
+        \item Return value in {\tt eax}
+    \end{itemize}
+\begin{verbatim}
+        segment .data
+hello:  db      "Hello world!",0x0a
+        segment .text
+        ...
+        mov     eax, 4        ; syscall 4 is write
+        mov     ebx, 1        ; file descriptor
+        lea     ecx, [hello]  ; array to write
+        mov     rdx, 13       ; write 13 bytes
+        int     0x80
+\end{verbatim}
+\end{frame}
+
+\section{64 bit system calls}
+
+\begin{frame}[fragile]
+    \frametitle{64 bit Linux system calls}
+    \begin{itemize}
+        \item System call number defined in ``{\tt /usr/include/asm/unistd\_64.h}''
+        \item System call number is placed in {\tt rax}
+        \item Parameters {\tt rdi}, {\tt rsi}, {\tt rdx}, {\tt r10}, {\tt r8}
+              and {\tt r9}.
+        \item Process uses {\tt syscall} instruction
+        \item Return value in {\tt rax}.
+    \end{itemize}
+\small
+\begin{verbatim}
+        segment .data
+hello:  db      "Hello world!",0x0a
+        segment .text
+        global  _start
+_start: mov     eax, 1        ; syscall 1 is write
+        mov     edi, 1        ; file descriptor
+        lea     rsi, [hello]  ; array to write
+        mov     edx, 13       ; write 13 bytes
+        syscall
+        mov     eax, 60       ; syscall 60 is exit
+        xor     edi, edi      ; exit(0)
+        syscall
+\end{verbatim}
+\end{frame}
+
+\section{C wrapper functions}
+
+\begin{frame}[fragile]
+    \frametitle{C wrapper functions}
+    \begin{itemize}
+        \item Every system call is available through a C ``wrapper function''
+        \item A wrapper function might do very little other than shuffle registers
+        \item Some wrappers offer a little extra convenience
+        \item Wrapper functions are described in section 2 of the on-line manual
+        \begin{itemize}
+            \item Use ``{\tt man 2 write}'' to learn about the write system call
+        \end{itemize}
+    \end{itemize}
+\small
+\begin{verbatim}
+        segment .data
+msg:    db      "Hello World!",0x0a ; String to print
+len:    equ     $-msg               ; Length of the string
+        segment .text
+        global  main               
+        extern  write, exit
+main:
+        mov     edx, len            ; Arg 3 is the length
+        mov     rsi, msg            ; Arg 2 is the array
+        mov     edi, 1              ; Arg 1 is the fd
+        call    write
+        xor     edi, edi            ; 0 return = success
+        call    exit
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Open system call}
+\begin{verbatim}
+    int open ( char *pathname, int flags [, int mode ] );
+\end{verbatim}
+    \begin{itemize}
+        \item {\tt pathname} is a null-terminated string
+        \item {\tt flags} is a collection of options or'ed together
+        \item {\tt mode} is the permissions to grant if a file is created
+    \end{itemize}
+\begin{center}
+    \begin{tabular}{|c|l|}
+        \hline
+        flags & meaning \\
+        \hline
+        0    & read-only \\
+        \hline
+        1    & write-only \\
+        \hline
+        2    & read and write \\
+        \hline
+        0x40 & create if needed \\
+        \hline
+        0x200 & truncate the file \\
+        \hline
+        0x400 & append \\
+        \hline
+    \end{tabular}
+\end{center}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Permissions for files}
+    \begin{itemize}
+        \item There are 3 basic permissions: read, write and execute
+        \item There are 3 categories of users: user (owner), group and other
+        \item Each of the 3 categories gets a 0 or 1 for each basic permission
+        \item Octal works well for permissions
+        \item 640o is an octal number granting read and write permission to the user,
+              read permission to the group and no permission to others
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Code to open a file}
+    \begin{itemize}
+        \item Open system call returns a small non-negative integer identifying
+              the opened file
+        \item It returns -1 on error and sets {\tt errno}
+    \end{itemize}
+\begin{verbatim}
+        segment .data
+fd:     dd      0
+name:   db      "sample",0
+        segment .text
+        extern  open
+        lea     rdi, [name] ; pathname
+        mov     esi, 42     ; read-write | create
+        mov     rdx, 600o   ; read-write for me
+        call    open
+        test    eax, 0
+        jz      error       ; failed to open
+        mov     [fd], eax
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Read and write system calls}
+\begin{verbatim}
+    int read ( int fd, void *data, long count );
+    int write ( int fd, void *data, long count );
+\end{verbatim}
+    \begin{itemize}
+        \item {\tt fd} is the file descriptor returned by {\tt open}
+        \item {\tt data} is a pointer to some memory to send or receive data
+        \item {\tt count} is the number of bytes to read or write
+        \item The data can be any type
+        \item These functions return the number of bytes read or written
+        \item {\tt read} returns 0 on end-of-file
+        \item They both return -1 on errors and set {\tt errno}
+        \item Use {\tt perror} to print a text description based on {\tt errno}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Lseek system call}
+\begin{verbatim}
+    long lseek ( int fd, long offset, int whence );
+\end{verbatim}
+    \begin{itemize}
+        \item {\tt offset} is a byte offset from whence
+        \item If {\tt whence} is 0, {\tt offset} is the byte position
+        \item If {\tt whence} is 1, {\tt offset} is relative to the current position
+        \item If {\tt whence} is 2, {\tt offset} id relative to the end of the file
+        \item {\tt lseek} returns the current position
+        \item Using {\tt whence} = 2 and {\tt offset} = 0, {\tt lseek} returns the
+              file size
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Reading an entire file}
+\begin{verbatim}
+        mov     edi, [fd]
+        xor     esi, esi    ; set offset to 0
+        mov     edx, 2      ; set whence to 2
+        call    lseek       ; determine file size
+        mov     [size], rax
+        mov     edi, rax
+        call    malloc      ; allocate an array for the file
+        mov     [data], rax
+        mov     edi, [fd]
+        xor     esi, esi    ; set offset to 0
+        xor     edx, edx    ; set whence to 0
+        call    lseek       ; seek to start of file
+        mov     edi, [fd]
+        mov     esi, [data]
+        mov     edx, [size]
+        call    read        ; read the entire file
+\end{verbatim}    
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{The close system call}
+    \begin{verbatim}
+    int close ( int fd );
+    \end{verbatim}
+    \begin{itemize}
+        \item You should make a habit of closing files when no longer needed
+        \item They will be closed when the process ends
+        \item No data is buffered in the user process, so data written to
+              unclosed files will be written
+        \item Closing will reduce overhead in the kernel
+        \item There is a per-process limit on open files
+        \item Use ``{\tt ulimit -a}'' to see your limits
+    \end{itemize}
+\end{frame}
+
+\end{document}

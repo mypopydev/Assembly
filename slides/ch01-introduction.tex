@@ -1,0 +1,406 @@
+\documentclass{beamer}
+
+\usepackage{geometry}
+\usepackage{graphicx}
+%\usepackage{wrapfig}
+\usepackage{amsmath}
+
+%\useoutertheme{infolines}
+\usetheme{Boadilla}
+\usecolortheme{seahorse}
+\setbeamertemplate{navigation symbols}{}
+\title{Introduction to 64 Bit Intel Assembly Language Programming}
+\newcommand{\shorttitle}{64 Bit Intel Assembly Language}
+\newcommand{\shortauthor}{\copyright 2011 Ray Seyfarth}
+\author{Ray Seyfarth}
+\begin{document}
+
+
+\usefoottemplate{\vbox{
+\tinycolouredline{structure!55}%
+ {\color{white}{\textbf{\shorttitle}\hfill\textbf{\shortauthor}}}%
+}}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+\begin{frame}
+\frametitle{Outline}
+\tableofcontents
+\end{frame}
+
+\section{Goals for this course}
+
+\begin{frame}
+    \frametitle{Goals for this course}
+    \begin{itemize}
+        \item Learn internal data formats
+        \item Learn basic 64 bit Intel/AMD instructions
+        \item Write pure assembly programs
+        \item Write mixed C and assembly programs
+        \item Use the {\tt gdb} debugger
+        \item Floating point instructions
+        \item Arrays
+        \item Functions
+        \item Structs
+        \item Data structures
+        \item Using system calls and C libraries
+        \item SSE and AVX instructions
+    \end{itemize}
+
+\end{frame}
+
+\section{Why study assembly language?}
+
+\begin{frame}
+    \frametitle{Problems with assembly language}
+    \begin{itemize}
+        \item Assembly is the poster child for non-portability
+        \begin{itemize}
+            \item Different CPU = different assembly
+            \item Different OS = different function ABI
+            \item Intel/AMD CPUs operate in 16, 32 and 64 bit modes
+        \end{itemize}
+        \item Difficult to program
+        \begin{itemize}
+            \item More time = more money
+            \item Less reliable
+            \item Difficult to maintain
+        \end{itemize}
+        \item Syntax does not resemble mathematics
+        \item No syntactic protection
+            \begin{itemize}
+                \item No structured ifs, loops
+            \end{itemize}
+        \item No typed variables
+            \begin{itemize}
+                \item Can use a pointer as a floating point number
+                \item Can load a 4 byte integer from a double variable
+            \end{itemize}
+        \item Variable access is roughly like using pointers
+        \item Language is not orthogonal
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{What's good about assembly language?}
+    \begin{itemize}
+        \item Assembly language is fast
+        \begin{itemize}
+            \item Optimizing C/C++ compilers can be faster
+            \item You need to dissect an algorithm and rearrange it to use
+                  a special feature that the compiler can't figure out
+            \item Generally you must use a special instructions
+            \item There are over 1000 instructions
+            \item Still it can be faster
+        \end{itemize}
+        \item Assembly programs are small
+        \begin{itemize}
+            \item But memory is cheap and plentiful
+            \item C/C++ compilers can optimize for size
+            \item Compilers can re-order code sections to reduce size
+        \end{itemize}
+        \item Assembly can do things not possible in C/C++
+        \begin{itemize}
+            \item I/O instructions
+            \item Manage memory mapping registers
+            \item Manipulate other internal control registers
+        \end{itemize}
+
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{What's good about assembly for ordinary mortals?}
+    \begin{itemize}
+        \item Explains how the computer works
+        \item Numbers are stored in registers
+        \item Arithmetic is done with registers
+        \item C function register and stack usage defined
+        \item Stack frames are used by debuggers
+        \item Optimization techniques are explained
+        \item Computer bugs are more immediately related to machine
+              instructions and limitations
+        \item You will learn how the compiler implements
+            \begin{itemize}
+                \item if/else statements
+                \item loops
+                \item functions
+                \item structures
+                \item arrays
+                \item recursion
+            \end{itemize}
+        \item Your C/C++ coding will improve
+    \end{itemize}
+\end{frame}
+
+\section{What is a computer?}
+
+\begin{frame}
+    \frametitle{What is a computer?}
+    \begin{itemize}
+        \item A machine to process bits
+        \begin{itemize}
+            \item We consider the bits to mean things
+            \item True or false
+            \item Integers
+            \item Floating point numbers
+            \item Characters and strings
+            \item User-created types
+            \begin{itemize}
+                \item Physical objects, animals, plants, minerals
+                \item Lists of things
+                \item Stacks of things
+                \item Queues of things
+                \item Priority queues of things
+                \item Trees of various types
+                \item Hash tables
+            \end{itemize}
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Bytes}
+    \begin{itemize}
+        \item Memory is organized as 8 bit bytes
+        \item First byte of memory is at address 0
+        \item Second byte is at address 1
+        \item Memory is an array of bytes
+        \item Consider the byte with bits {\tt 01010101}
+        \begin{itemize}
+            \item Considered as a decimal number it is 85
+            \item In the right context it can be a machine instruction
+            \begin{itemize}
+                \item Push the {\tt rbp} register onto the run-time stack
+            \end{itemize}
+            \item Considered as a character is it '{\tt U}'
+            \item It could be part of the string ``{\tt Undefined}''
+            \item It could be part of a larger number, like 85*256+17 = 21777
+            \item It could be part if an address in the computer
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Program execution}
+    \begin{columns}[c]
+        \column{.05\textwidth}
+            \quad
+        \column{.5\textwidth}
+            The 12 bytes to the right constitute a program which
+            if placed in memory and executed, simply exits with status 5.
+            The addresses are shown in hexadecimal to emphasize that the addresses
+            are fairly close to the beginning of a page starting at {\tt 0x400000}.
+        \column{.05\textwidth}
+            \quad
+        \column{.4\textwidth}
+            \begin{tabular}{|c|c|}
+            \hline
+            Address & Value \\
+            \hline
+            4000b0 & 184 \\
+            \hline
+            4000b1 & 1 \\
+            \hline
+            4000b2 & 0 \\
+            \hline
+            4000b3 & 0 \\
+            \hline
+            4000b4 & 0 \\
+            \hline
+            4000b5 & 187 \\
+            \hline
+            4000b6 & 5 \\
+            \hline
+            4000b7 & 0 \\
+            \hline
+            4000b8 & 0 \\
+            \hline
+            4000b9 & 0 \\
+            \hline
+            4000ba & 205 \\
+            \hline
+            4000bb & 128 \\
+            \hline
+            \end{tabular}
+    \end{columns}
+\end{frame}
+
+\section{Machine language}
+
+\begin{frame}
+    \frametitle{Machine language}
+    \begin{itemize}
+        \item Machine language is a sequence of bytes
+        \item The bytes specify instructions and data
+        \item Many instructions include a data address
+        \item Branching instructions include instruction addresses
+        \item Adding a new instruction changes all subsequent instruction addresses
+        \item Changes to data can alter data addresses
+            \begin{itemize}
+                \item Increasing an array size changes all subsequent data addresses
+                \item Adding a data item can change subsequent data addresses
+            \end{itemize}
+        \item Each changed address must be changed in all instructions using the address
+        \item This is hard enough to stimulate creativity
+        \item People figured out how to use symbolic names for data and instructions
+    \end{itemize}
+\end{frame}
+
+\section{Assembly language}
+
+\begin{frame}
+    \frametitle{Second generation language}
+    \begin{itemize}
+        \item First generation - machine language
+        \item Second generation - assembly language
+        \begin{itemize}
+            \item Names for instructions
+            \item Names for variables
+            \item Names for locations of instructions
+            \item Perhaps with macros - code replacement
+        \end{itemize}
+        \item Third generation - not machine instructions
+        \begin{itemize}
+            \item Modeled after mathematics - Fortran
+            \item Modeled after English - Cobol
+            \item List processing - Lisp
+        \end{itemize}
+        \item Fourth generation - domain specific
+        \begin{itemize}
+            \item SQL
+        \end{itemize}
+        \item Fifth generation - describe problem, computer generates algorithm
+        \begin{itemize}
+            \item Prolog
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Assembly example}
+
+\begin{verbatim}
+;   Program: exit
+;
+;   Executes the exit system call
+;
+;   No input
+;
+;   Output: only the exit status ($? in the shell)
+;
+    segment .text
+    global  _start
+_start:
+    mov  eax,1       ; 1 is the exit syscall number
+    mov  ebx,5       ; the status value to return
+    int  0x80        ; execute a system call
+\end{verbatim}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Assembly syntax}
+    \begin{itemize}
+        \item {\tt ;} starts comments
+        \item Labels are strings which are not instructions
+        \begin{itemize}
+            \item Usually start in column 1
+            \item Can end with a colon to avoid confusion with instructions
+        \end{itemize}
+        \item Instructions can be machine instructions or assembler instructions
+        \begin{itemize}
+            \item {\tt mov} and {\tt int} are machine instructions or opcodes
+            \item {\tt segment} and {\tt global} are assembler instructions
+                  or pseudo-ops
+        \end{itemize}
+        \item Instructions can have operands
+        \begin{itemize}
+            \item {\tt here:  mov  eax, 1}
+            \item {\tt here} is a label for the instruction
+            \item {\tt mov} is an opcode
+            \item {\tt eax} and {\tt 1} are operands
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Some assembler instructions}
+    \begin{itemize}
+        \item {\tt section} or {\tt segment} define a part of the program
+        \begin{itemize}
+            \item {\tt .text} is where instructions go for Linux
+        \end{itemize}
+        \item {\tt global} defines a label to be used by the linker
+        \item {\tt global \_start} makes {\tt \_start} a global label
+        \item {\tt \_start} or {\tt main} is where a program starts
+        \begin{itemize}
+            \item {\tt \_start} is more basic
+            \item {\tt main} is called (perhaps indirectly) by {\tt \_start}
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\section{Assembling and linking}
+
+\begin{frame}
+    \frametitle{Assembling the exit program}
+    \begin{itemize}
+        \item {\tt yasm -f elf64 -g dwarf2 -l exit.lst exit.asm}
+        \item {\tt -f elf64} says we want a 64 bit object file
+        \item {\tt -g dwarf2} says we want {\tt dwarf2} debugging info
+        \begin{itemize}
+            \item {\tt dwarf2} works pretty well with the {\tt gdb} debugger
+        \end{itemize}
+        \item {\tt -l exit.lst} asks for a listing in {\tt exit.lst}
+        \item {\tt yasm} will produce {\tt exit.o}, an object file
+        \begin{itemize}
+            \item machine instructions not ready to execute
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{\tt exit.lst}
+\begin{verbatim}
+     1                                 %line 1+1 exit.asm
+     2                                 
+     3                                 
+     4                                 
+     5                                 
+     6                                 
+     7                                 
+     8                                 
+     9                                 
+    10                                 [segment .text]
+    11                                 [global _start]
+    12                                 
+    13                                 _start:
+    14 00000000 B801000000              mov eax,1
+    15 00000005 BB05000000              mov ebx,5
+    16 0000000A CD80                    int 0x80
+\end{verbatim}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Linking}
+    \begin{itemize}
+        \item Linking means combining object files to make an executable file
+        \item For programs with {\tt \_start}
+        \begin{itemize}
+            \item {\tt ld -o exit exit.o}
+            \item Builds a file named {\tt exit}
+            \item Default is {\tt a.out}
+        \end{itemize}
+        \item For programs with {\tt main}
+        \begin{itemize}
+            \item {\tt gcc -o exit exit.o}
+            \item Gets default {\tt \_start} function from the C library
+        \end{itemize}
+        \item {\tt ./exit} to run the program
+    \end{itemize}
+\end{frame}
+
+
+
+\end{document}

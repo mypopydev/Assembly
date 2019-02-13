@@ -1,0 +1,129 @@
+\documentclass{beamer}
+
+\usepackage{geometry}
+\usepackage{graphicx}
+%\usepackage{wrapfig}
+\usepackage{amsmath}
+
+%\useoutertheme{infolines}
+\usetheme{Boadilla}
+\usecolortheme{seahorse}
+\setbeamertemplate{navigation symbols}{}
+\title{Computing Correlation}
+\newcommand{\shorttitle}{64 Bit Intel Assembly Language}
+\newcommand{\shortauthor}{\copyright 2011 Ray Seyfarth}
+\author{Ray Seyfarth}
+\begin{document}
+
+
+\usefoottemplate{\vbox{
+\tinycolouredline{structure!55}%
+ {\color{white}{\textbf{\shorttitle}\hfill\textbf{\shortauthor}}}%
+}}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}
+\frametitle{Outline}
+\tableofcontents
+\end{frame}
+
+\section{Correlation}
+
+\begin{frame}
+    \frametitle{Correlation}
+    \begin{itemize}
+        \item First the definition of correlation
+    \end{itemize}
+$$r_{xy}= \frac{\sum_{i=1}^n (x_i - \bar{x})(y_i-\bar{y})}
+{\sqrt{\sum_{i=1}^n(x_i-\bar{x})^2\sum_{i=1}^n(y_i-\bar{y})^2}} $$
+    \begin{itemize}
+        \item Next a formula more amenable to computation
+    \end{itemize}
+$$r_{xy} = \frac{n\sum x_iy_i - \sum x_i \sum y_i}
+{\sqrt{n\sum x_i^2 - (\sum x_i)^2} \sqrt{n\sum y_i^2 - (\sum y_i)^2} }$$
+    \begin{itemize}
+        \item This formula requires computing 5 sums while processing the 2 arrays
+    \end{itemize}
+
+\end{frame}
+
+\section{Correlation in C}
+
+\begin{frame}[fragile]
+    \frametitle{A simple C solution}
+\small
+\begin{verbatim}
+#include <math.h>
+double corr ( double x[], double y[], long n )
+{
+    double sum_x, sum_y, sum_xx, sum_yy, sum_xy;
+    long i;
+
+    sum_x = sum_y = sum_xx = sum_yy = sum_xy = 0.0;
+    for ( i = 0; i < n; i++ ) {
+        sum_x += x[i];
+        sum_y += y[i];
+        sum_xx += x[i]*x[i];
+        sum_yy += y[i]*y[i];
+        sum_xy += x[i]*y[i];
+    }
+    return (n*sum_xy-sum_x*sum_y)/
+           sqrt((n*sum_xx-sum_x*sum_x)*(n*sum_yy-sum_y*sum_y));
+}
+\end{verbatim}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Simple C solution results}
+    \begin{itemize}
+        \item {\tt gcc} used all 16 XMM registers
+        \item It unrolled the basic loop 4 times
+        \item Is also handled non multiple of 4 array sizes
+        \item Performing 1 million calls for arrays of size 10000
+              used 13.44 seconds for 5.9 GFLOPS
+        \item Excellent for compiled code
+    \end{itemize}
+\end{frame}
+
+\section{Implementation using SSE instructions}
+
+\begin{frame}
+    \frametitle{SSE implementation}
+\begin{itemize}
+    \item The XMM registers were used to accumulate partial sums for the various
+          sums
+    \item 10 registers were used to hold 4 partial sums for each of the 5 required
+          sums
+    \item After the main loop the partial sums were added together
+    \item Horizontal adds were used to add the 2 halves of registers
+    \item Then the correlation was computed
+    \item 1 million calls for arrays of size 10000 used 6.74 seconds or 11.8 GFLOPS
+    \item This is about 3.5 double precision floating point results per CPU cycle
+    \item Quite impressive
+\end{itemize}
+\end{frame}
+
+\section{Implementation using AVX instructions}
+
+\begin{frame}
+    \frametitle{AVX implementation}
+    \begin{itemize}
+    \item The YMM registers were used to accumulate partial sums for the various
+          sums
+    \item 10 registers were used to hold 8 partial sums for each of the 5 required
+          sums
+    \item After the main loop the partial sums were added together
+    \item Horizontal adds were used to add the numbers in the  2 halves of registers
+    \item Unfortunately this was not quite enough to add all 4 values
+    \item A little more bit wrangling was required to add the partial sums
+    \item Then the correlation was computed
+    \item 1 million calls for arrays of size 10000 used 3.9 seconds or 20.5 GFLOPS
+    \item This is about 6 double precision floating point results per CPU cycle
+    \item Amazing for 1 core of a 4 core CPU
+    \end{itemize}
+\end{frame}
+
+\end{document}

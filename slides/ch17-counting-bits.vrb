@@ -1,0 +1,18 @@
+\frametitle {Using the {\tt popcnt} instruction}
+    \begin{itemize}
+        \item Some newer computers (Intel Core i series and some Opterons) have
+              a {\tt popcnt} instruction which exactly matches the problem.`
+        \item After unrolling the loop 2 times, the operation took 0.04 seconds
+              on a Core i7 at 3.4 GHz
+    \end{itemize}
+\begin{verbatim}
+.count_more:
+        popcnt  rdx, [rdi+rcx*8]
+        add     rax, rdx
+        popcnt  r9, [rdi+rcx*8+8]
+        add     r8, r9
+        add     rcx, 2
+        cmp     rcx, rsi
+        jl      .count_more
+        add     rax, r8
+\end{verbatim}

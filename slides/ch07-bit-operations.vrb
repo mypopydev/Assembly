@@ -1,0 +1,20 @@
+\frametitle {Set operations example code}
+    \begin{itemize}
+        \item {\tt rax} contains the bit number to work on
+        \item This bit number could exceed 64
+        \item We compute the quad-word of {\tt data} which
+              holds the bit
+        \item We also compute the bit number within the quad-word
+    \end{itemize}
+
+\begin{verbatim}
+    mov  rbx, rax           ; copy bit number to rbx
+    shr  rbx, 6             ; qword index of data to test
+    mov  rcx, rax           ; copy bit number to rcx
+    and  rcx, 0x3f          ; extract rightmost 6 bits
+    xor  edx, edx           ; set rdx to 0
+    bt   [data+8*rbx],rcx   ; test bit
+    setc dl                 ; edx equals the tested bit
+    bts  [data+8*rbx],rcx   ; set the bit, insert into set
+    btr  [data+8*rbx],rcx   ; clear the bit, remove
+\end{verbatim}

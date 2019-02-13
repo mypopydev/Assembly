@@ -1,0 +1,4 @@
+\beamer@endinputifotherversion {3.10pt}
+\beamer@sectionintoc {1}{32 bit system calls}{4}{0}{1}
+\beamer@sectionintoc {2}{64 bit system calls}{5}{0}{2}
+\beamer@sectionintoc {3}{C wrapper functions}{6}{0}{3}

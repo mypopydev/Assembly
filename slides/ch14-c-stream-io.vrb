@@ -1,0 +1,11 @@
+\frametitle {Closing a file}
+\begin{verbatim}
+    int fclose(FILE *fp);
+\end{verbatim}
+    \begin{itemize}
+        \item The {\tt FILE} object has a buffer and may
+              contain data which has not been written
+        \item Failure to close with {\tt fclose} could result in lost data
+        \item The system will close the underlying file, but will not
+              call {\tt fclose} automatically when your process ends
+    \end{itemize}

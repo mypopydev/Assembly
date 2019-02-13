@@ -1,0 +1,21 @@
+\frametitle {Recursive print function: rec\_print(t)}
+\small
+\begin{verbatim}
+rec_print: push    rbp
+           mov     rbp, rsp
+           sub     rsp, 16           ; make room to save t
+           cmp     rdi, 0            ; return if t is NULL
+           je      .done
+           mov     [rsp+.t], rdi     ; save t, .t equ 0
+           mov     rdi, [rdi+n_left] ; print the left sub-tree
+           call    rec_print
+           mov     rdi, [rsp+.t]     ; print the current node
+           mov     rsi, [rdi+n_value]
+           lea     rdi, [.print]     ; .print: format string
+           call    printf
+           mov     rdi, [rsp+.t]     ; print the right sub-tree
+           mov     rdi, [rdi+n_right]
+           call    rec_print
+.done      leave
+           ret
+\end{verbatim}

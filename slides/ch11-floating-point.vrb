@@ -1,0 +1,19 @@
+\frametitle {Polynomial evaluation by Horner's Rule}
+$$P(x) = p_0 + p_1x + p_2x^2 \cdots p_nx^n$$
+\begin{align*}
+    b_n      &= p_n \\
+   b_{n-1}   &= p_{n-1} + b_nx \\
+   b_{n-2}   &= p_{n-2} + b_{n-1}x \\
+    b_0      &= p_0 + b_1x
+\end{align*}
+\begin{verbatim}
+horner: movsd   xmm1, xmm0          ; use xmm1 as x
+        movsd   xmm0, [rdi+rsi*8]   ; accumulator for b_k
+        test    esi, 0              ; is the degree 0?
+        jz      done
+more:   sub     esi, 1
+        mulsd   xmm0, xmm1          ; b_k * x
+        addsd   xmm0, [rdi+rsi*8]   ; add p_k
+        jnz     more
+done:   ret
+\end{verbatim}

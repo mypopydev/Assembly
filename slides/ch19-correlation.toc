@@ -1,0 +1,5 @@
+\beamer@endinputifotherversion {3.10pt}
+\beamer@sectionintoc {1}{Correlation}{3}{0}{1}
+\beamer@sectionintoc {2}{Correlation in C}{4}{0}{2}
+\beamer@sectionintoc {3}{Implementation using SSE instructions}{6}{0}{3}
+\beamer@sectionintoc {4}{Implementation using AVX instructions}{7}{0}{4}

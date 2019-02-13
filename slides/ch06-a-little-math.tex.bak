@@ -1,0 +1,270 @@
+\documentclass{beamer}
+
+\usepackage{geometry}
+\usepackage{graphicx}
+%\usepackage{wrapfig}
+\usepackage{amsmath}
+
+%\useoutertheme{infolines}
+\usetheme{Boadilla}
+\usecolortheme{seahorse}
+\setbeamertemplate{navigation symbols}{}
+\title{A Little Bit of Math}
+\newcommand{\shorttitle}{64 Bit Intel Assembly Language}
+\newcommand{\shortauthor}{\copyright 2011 Ray Seyfarth}
+\author{Ray Seyfarth}
+\begin{document}
+
+
+\usefoottemplate{\vbox{
+\tinycolouredline{structure!55}%
+ {\color{white}{\textbf{\shorttitle}\hfill\textbf{\shortauthor}}}%
+}}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}
+\frametitle{Outline}
+\tableofcontents
+\end{frame}
+
+\begin{frame}
+    \frametitle{A little bit of math}
+    \begin{itemize}
+        \item So far we have learned how to get values into registers
+        \item And how to place them back into memory
+        \item Just some ordinary arithmetic can help us write slightly
+              more useful programs
+        \item This chapter discusses only integer math
+    \end{itemize}
+\end{frame}
+
+\section{Negation}
+
+
+\begin{frame}[fragile]
+    \frametitle{Negation}
+    \begin{itemize}
+        \item The negate instruction, {\tt neg}, converts a number to its
+              two's complement
+        \item {\tt neg} sets the sign and zero flags
+        \item There is only a single operand which is source and destination
+        \item For memory operands you must include a size prefix
+        \item The sizes are {\tt byte}, {\tt word}, {\tt dword} and {\tt qword}
+    \end{itemize}
+    \begin{verbatim}
+        neg     rax       ; negate the value in rax
+        neg     dword [x] ; negate a 4 byte integer at x
+        neg     byte [x]  ; negate a byte at x
+    \end{verbatim}
+\end{frame}
+
+\section{Addition}
+\begin{frame}
+    \frametitle{The {\tt add} instruction}
+    \begin{itemize}
+        \item The {\tt add} instruction always has exactly 2 operands
+        \item It adds its source value to its destination
+        \item The source can be immediate, a register or a memory location
+        \item The destination can be a register or a memory location
+        \item Using memory locations for both source and destination is not allowed
+        \item It sets (or clears) the sign flag, the zero flag and the overflow flag
+        \item Some other flags are set related to binary-coded decimal arithmetic
+        \item There is no special ``signed add'' versus ``unsigned add'' since the 
+              logic is identical
+        \item There is a special 1 operand increment instruction, {\tt inc}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{A program using {\tt add}}
+    \begin{verbatim}
+        segment .data
+a       dq      151
+b       dq      310
+sum     dq      0
+        segment .text
+        global  main
+main:
+        mov     rax, 9      ; set rax to 9
+        add     [a], rax    ; add rax to a
+        mov     rax, [b]    ; get b into rax
+        add     rax, 10     ; add 10 to rax
+        add     rax, [a]    ; add the contents of a
+        mov     [sum], rax  ; save the sum in sum
+        mov     rax, 0
+        ret
+    \end{verbatim}
+\end{frame}
+
+\section{Subtraction}
+
+\begin{frame}
+    \frametitle{The subtract instruction}
+    \begin{itemize}
+        \item The {\tt sub} instruction performs integer subtraction
+        \item Like {\tt add} it supports 2 operands
+        \item Only one of the operands can be a memory operand
+        \item There is a ``subtract one'' instruction, {\tt dec}
+        \item It sets the sign flag, the zero flag and the overflow flag
+        \item There is no special ``signed subtract'' versus ``unsigned subtract''  
+              since the logic is identical
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{A program using {\tt sub}}
+\begin{verbatim}
+        segment .data
+a       dq      100
+b       dq      200
+diff    dq      0
+        segment .text
+        global  main
+main:
+        mov     rax, 10
+        sub     [a], rax    ; subtract 10 from a
+        sub     [b], rax    ; subtract 10 from b
+        mov     rax, [b]    ; move b into rax
+        sub     rax, [a]    ; set rax to b-a
+        mov     [diff], rax ; move the difference to diff
+        mov     rax, 0
+        ret
+\end{verbatim}
+\end{frame}
+
+\section{Multiplication}
+
+\begin{frame}[fragile]
+    \frametitle{Multiplication}
+    \begin{itemize}
+        \item Unsigned multiplication is done using the {\tt mul} instruction
+        \item Signed multiplication is done using {\tt imul}
+        \item There is only 1 form for {\tt mul}
+        \begin{itemize}
+            \item It uses 1 operand, the source operand
+            \item The other factor is in {\tt rax}, {\tt eax}, {\tt ax} or {\tt al}
+            \item The destination is {\tt ax} for byte multiplies
+            \item Otherwise the product is in {\tt rdx:rax}, {\tt edx:eax}, or
+                  {\tt dx:ax}
+        \end{itemize}
+    \end{itemize}
+    \begin{verbatim}
+    mov     rax, [a]
+    mul     qword [b]  ; a * b will be in rdx:rax
+    mov     eax, [c]
+    mul     dword [d]  ; c * d will be in edx:eax
+    \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Signed multiplication}
+    \begin{itemize}
+        \item {\tt imul} has a single operand form just like {\tt mul}
+        \item It also has a 2 operand form, source and destination, like {\tt add} and {\tt sub}
+        \item Finally there is a 3 operand form: destination, source and immediate
+            source
+        \item If you need all 127 bits of product, use the single operand form
+        
+    \end{itemize}
+\begin{verbatim}
+    imul    rax, 100        ; multiply rax by 100
+    imul    r8, [x]         ; multiply rax by x
+    imul    r9, r10         ; multiply r9 by r10
+    imul    r8, r9, 11      ; store r9 * 11 in r8
+\end{verbatim}
+\end{frame}
+
+\section{Division}
+
+\begin{frame}[fragile]
+    \frametitle{Division}
+    \begin{itemize}
+        \item Division returns a quotient and a remainder
+        \item It also has signed ({\tt idiv}) and unsigned forms ({\tt div})
+        \item In both forms the dividend is stored in {\tt rdx:rax} or parts thereof
+        \item The quotient is stored in {\tt rax}
+        \item The remainder is stored in {\tt rdx}
+        \item No flags are set
+    \end{itemize}
+\begin{verbatim}
+    mov     rax, [x]        ; x will be the dividend
+    mov     rax, 0          ; 0 out rax, so rdx:rax == rax
+    idiv    [y]             ; divide by y
+    mov     [quot], rax     ; store the quotient
+    mov     [rem], rdx      ; store the remainder
+\end{verbatim}
+\end{frame}
+
+\section{Conditional move instructions}
+
+\begin{frame}[fragile]
+    \frametitle{Conditional move instructions}
+    \begin{itemize}
+        \item There are many variants of conditional move, {\tt cmovCC},
+              where {\tt CC} is a condition like {\tt l} for less
+        \item These are great for simple conditionals
+        \item You can avoid interrupting the instruction pipeline
+    \end{itemize}
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+Instruction & effect \\
+\hline
+cmovz       & move if zero flag set \\
+\hline
+cmovnz       & move if zero flag not set (not zero) \\
+\hline
+cmovl       & move if result was negative \\
+\hline
+cmovle       & move if result was negative or zero \\
+\hline
+cmovg       & move if result was positive \\
+\hline
+cmovge       & result was positive or zero \\
+\hline
+\end{tabular}
+\end{center}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Conditional move examples}
+    \begin{itemize}
+        \item Here is some code to compute absolute value
+    \end{itemize}
+\begin{verbatim}
+    mov     rbx, rax    ; save original value
+    neg     rax         ; negate rax
+    cmovl   rax, rbx    ; replace rax if negative
+\end{verbatim}
+    \begin{itemize}
+        \item The code below loads a number from memory, subtracts 100 and
+              replaces the difference with 0 if the difference is negative
+    \end{itemize}
+\begin{verbatim}
+    mov     rbx, 0      ; set rbx to 0
+    mov     rax, [x]    ; get x from memory
+    add     rax, 100    ; subtract 100 from x
+    cmovl   rax, rbx    ; set rax to 0 if rax was negative
+\end{verbatim}
+\end{frame}
+
+\section{Why use a register?}
+
+\begin{frame}
+    \frametitle{Why use a register?}
+    \begin{itemize}
+        \item Don't use a register if a value is needed for 1 instruction
+        \item Don't worry about it for things which execute infrequently
+        \item Use registers instead of memory for instructions which execute enough
+              to matter
+        \item If you are writing a program for a class and efficiency is not part
+              of the grade, pick the clearest way to write the code
+        \item With so many registers, it can create opportunities for efficiency at
+              the cost of clarity
+    \end{itemize}
+\end{frame}
+
+\end{document}

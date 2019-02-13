@@ -1,0 +1,12 @@
+\frametitle {Memory example listing file (3)}
+\begin{verbatim}
+16                                 [section .text]
+17                                 [global main]
+18                                 main:
+19 00000000 55                      push rbp
+20 00000001 4889E5                  mov rbp, rsp
+21 00000004 4883EC10                sub rsp, 16
+22 00000008 31C0                    xor eax, eax
+23 0000000A C9                      leave
+24 0000000B C3                      ret
+\end{verbatim}

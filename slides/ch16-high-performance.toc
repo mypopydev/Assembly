@@ -1,0 +1,4 @@
+\beamer@endinputifotherversion {3.10pt}
+\beamer@sectionintoc {1}{Optimizations common to C/C++ and assembly}{3}{0}{1}
+\beamer@sectionintoc {2}{Optimizations the compiler can do in C, but you only in assembly}{9}{0}{2}
+\beamer@sectionintoc {3}{For assembly only}{21}{0}{3}
